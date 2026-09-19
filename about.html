@@ -236,9 +236,15 @@ footer{background:var(--black-2); border-top:1px solid var(--line); padding:60px
 .page-hero p.lead{position:relative; z-index:1; color:var(--muted); font-size:17px; line-height:1.7; max-width:600px; margin-top:20px;}
 
 .story-grid{display:grid; grid-template-columns:1fr 1fr; gap:60px; align-items:center;}
-.story-visual{ height:380px; border-radius:20px; position:relative; overflow:hidden; background:var(--panel); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; }
+.story-visual{ height:420px; border-radius:20px; position:relative; overflow:hidden; background:var(--panel); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; padding:36px; }
 .story-visual .ring-deco{position:absolute; border-radius:50%; border:1px solid rgba(0,234,255,0.18);}
-.story-visual .big-mark{font-family:'Sora',sans-serif; font-weight:800; font-size:120px; color:var(--neon); opacity:.9; text-shadow:0 0 70px rgba(0,234,255,0.5);}
+.story-stats{ position:relative; z-index:1; display:grid; grid-template-columns:1fr 1fr; gap:18px; width:100%; }
+.story-stat{ background:var(--panel-2); border:1px solid var(--line); border-radius:14px; padding:22px 18px; text-align:center; transition:border-color .3s ease, transform .3s ease; }
+.story-stat:hover{border-color:var(--neon); transform:translateY(-4px);}
+.story-stat .num{font-family:'Sora',sans-serif; font-weight:800; font-size:30px; color:var(--neon); text-shadow:0 0 22px rgba(0,234,255,0.4); margin-bottom:6px;}
+.story-stat .lbl{font-size:12px; color:var(--muted); line-height:1.4;}
+.story-lede{ position:relative; z-index:1; grid-column:1/-1; font-family:'Sora',sans-serif; font-weight:700; font-size:17px; line-height:1.5; color:var(--text); text-align:center; padding:18px 6px 0; border-top:1px solid var(--line); margin-top:6px; }
+.story-lede .hl{color:var(--neon);}
 
 .value-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:22px;}
 .value-card{background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:28px 22px; text-align:center; transition:transform .35s ease, border-color .35s ease;}
@@ -351,6 +357,7 @@ footer{background:var(--black-2); border-top:1px solid var(--line); padding:60px
   .chart-bars{gap:12px;}
   .founder-card{grid-template-columns:1fr; text-align:center;}
   .founder-avatar{margin:0 auto;}
+  .story-stats{grid-template-columns:1fr 1fr;}
 }
 </style>
 </head>
@@ -367,7 +374,7 @@ footer{background:var(--black-2); border-top:1px solid var(--line); padding:60px
       <li><a href="about.html" class="active">About Us</a></li>
       <li><a href="index.html#services">Services</a></li>
       <li><a href="clients.html">Clients</a></li>
-      <li><a href="index.html#why">Why JW</a></li>
+      <li><a href="about.html#why">Why JW</a></li>
       <li><a href="work.html">See Our Work</a></li>
       <li><a href="index.html#contact">Contact Us</a></li>
     </ul>
@@ -387,16 +394,23 @@ footer{background:var(--black-2); border-top:1px solid var(--line); padding:60px
 <section class="section">
   <div class="container story-grid">
     <div class="story-visual reveal-left">
-      <div class="ring-deco" style="width:300px;height:300px;"></div>
-      <div class="ring-deco" style="width:220px;height:220px;"></div>
-      <div class="big-mark">JW</div>
+      <div class="ring-deco" style="width:340px;height:340px;"></div>
+      <div class="ring-deco" style="width:250px;height:250px;"></div>
+      <div class="story-stats">
+        <div class="story-stat"><div class="num">5.5M+</div><div class="lbl">UK small businesses forming the backbone of the economy</div></div>
+        <div class="story-stat"><div class="num">99%</div><div class="lbl">Of UK businesses are small or independent</div></div>
+        <div class="story-stat"><div class="num">24%</div><div class="lbl">Of UK sole traders still have no website at all</div></div>
+        <div class="story-stat"><div class="num">73%</div><div class="lbl">Of local searches now start on a mobile device</div></div>
+        <div class="story-lede">Britain runs on small business. <span class="hl">It's time small business ran on enterprise-grade websites.</span></div>
+      </div>
     </div>
     <div class="reveal-right">
       <div class="section-tag">Our Story</div>
       <h2 style="font-size:32px; font-weight:700; margin-bottom:20px; letter-spacing:-0.5px;">Why we started JW Growth &amp; Design</h2>
+      <p style="color:var(--muted); font-size:15.5px; line-height:1.8; margin-bottom:16px;">Sole traders, independent shops and small local businesses are not a footnote in the UK economy — they are its backbone. They keep high streets alive, employ neighbours, and quietly power the services every community relies on. Yet too many of them are still competing online with tools built for a different era.</p>
       <p style="color:var(--muted); font-size:15.5px; line-height:1.8; margin-bottom:16px;">We kept seeing the same story: brilliant, hard-working trades and independent business owners — gardeners, cleaners, tradespeople, local service providers — doing outstanding work, yet losing customers to competitors with better websites, not better service.</p>
-      <p style="color:var(--muted); font-size:15.5px; line-height:1.8; margin-bottom:16px;">Enterprise-level web design and digital strategy has always existed. The problem was never quality — it was access. Agencies charged enterprise prices for enterprise clients, and independent businesses were left with outdated templates, DIY builders, or no website at all.</p>
-      <p style="color:var(--muted); font-size:15.5px; line-height:1.8;">JW Growth &amp; Design was built to close that gap: premium, animated, mobile-first websites and ongoing digital management, priced specifically for the realities of running an independent business.</p>
+      <p style="color:var(--muted); font-size:15.5px; line-height:1.8; margin-bottom:16px;">Budgets are tighter than ever, inflation keeps squeezing margins, and every day without a website that works is a day of enquiries quietly going to someone else. In an online-first era, that's not a minor inconvenience — it's the difference between growth and standing still.</p>
+      <p style="color:var(--muted); font-size:15.5px; line-height:1.8;">JW Growth &amp; Design exists to close that gap. We pair the right tools, strategy and design expertise to deliver an online presence with genuine enterprise-grade branding — engineered specifically for the budgets, timelines and realities of small and independent businesses. Premium shouldn't mean unreachable. It's time small businesses had the online presence they deserve, priced for the world they actually operate in.</p>
     </div>
   </div>
 </section>
@@ -451,6 +465,22 @@ footer{background:var(--black-2); border-top:1px solid var(--line); padding:60px
 <section class="section" style="background:var(--black-2);">
   <div class="container">
     <div class="section-head center">
+      <div class="section-tag center">Why JW Growth &amp; Design</div>
+      <h2>Enterprise Visibility. Independent Pricing.</h2>
+      <p>We built this business because independent businesses shouldn't have to choose between quality and affordability.</p>
+    </div>
+    <div class="why-grid">
+      <div class="why-item reveal-left"><div class="ic">💷</div><div><h4>A Fraction of the Cost</h4><p>Enterprise-calibre design and build, priced specifically for small and independent budgets.</p></div></div>
+      <div class="why-item reveal-right"><div class="ic">🤝</div><div><h4>Fully Managed, White-Label</h4><p>We handle hosting, updates and support so it feels like your own in-house digital team.</p></div></div>
+      <div class="why-item reveal-left"><div class="ic">📱</div><div><h4>Mobile-First by Default</h4><p>Every build is designed and tested for the 73% of customers searching from their phone first.</p></div></div>
+      <div class="why-item reveal-right"><div class="ic">🎯</div><div><h4>Local Market Expertise</h4><p>We specialise in trades, services and independent brands — we understand exactly what your customers expect.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="background:var(--black-2);">
+  <div class="container">
+    <div class="section-head center">
       <div class="section-tag center">Leadership</div>
       <h2>Meet the Founder</h2>
     </div>
@@ -481,7 +511,7 @@ footer{background:var(--black-2); border-top:1px solid var(--line); padding:60px
       <div class="brand"><div class="mark"><span>JW</span></div><div class="name">JW Growth <em>&</em> Design</div></div>
       <p>Delivering consultancy and premium web design to support growth for local and independent businesses across the UK.</p>
     </div>
-    <div class="footer-col"><h5>Company</h5><ul><li><a href="about.html">About Us</a></li><li><a href="index.html#why">Why JW</a></li><li><a href="clients.html">Clients</a></li></ul></div>
+    <div class="footer-col"><h5>Company</h5><ul><li><a href="about.html">About Us</a></li><li><a href="about.html#why">Why JW</a></li><li><a href="clients.html">Clients</a></li></ul></div>
     <div class="footer-col"><h5>Services</h5><ul><li><a href="index.html#services">Website Design</a></li><li><a href="work.html">See Our Work</a></li><li><a href="index.html#contact">Free Audit</a></li></ul></div>
     <div class="footer-col"><h5>Contact</h5><ul><li><a href="index.html#contact">Get In Touch</a></li><li><a href="index.html#contact">Request Audit</a></li></ul></div>
   </div>
