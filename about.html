@@ -236,15 +236,16 @@ footer{background:var(--black-2); border-top:1px solid var(--line); padding:60px
 .page-hero p.lead{position:relative; z-index:1; color:var(--muted); font-size:17px; line-height:1.7; max-width:600px; margin-top:20px;}
 
 .story-grid{display:grid; grid-template-columns:1fr 1fr; gap:60px; align-items:center;}
-.story-visual{ height:420px; border-radius:20px; position:relative; overflow:hidden; background:var(--panel); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; padding:36px; }
+.story-visual{ min-height:420px; border-radius:20px; position:relative; overflow:visible; background:var(--panel); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; padding:36px 30px 30px; }
 .story-visual .ring-deco{position:absolute; border-radius:50%; border:1px solid rgba(0,234,255,0.18);}
 .story-stats{ position:relative; z-index:1; display:grid; grid-template-columns:1fr 1fr; gap:18px; width:100%; }
 .story-stat{ background:var(--panel-2); border:1px solid var(--line); border-radius:14px; padding:22px 18px; text-align:center; transition:border-color .3s ease, transform .3s ease; }
 .story-stat:hover{border-color:var(--neon); transform:translateY(-4px);}
 .story-stat .num{font-family:'Sora',sans-serif; font-weight:800; font-size:30px; color:var(--neon); text-shadow:0 0 22px rgba(0,234,255,0.4); margin-bottom:6px;}
 .story-stat .lbl{font-size:12px; color:var(--muted); line-height:1.4;}
-.story-lede{ position:relative; z-index:1; grid-column:1/-1; font-family:'Sora',sans-serif; font-weight:700; font-size:17px; line-height:1.5; color:var(--text); text-align:center; padding:18px 6px 0; border-top:1px solid var(--line); margin-top:6px; }
+.story-lede{ position:relative; z-index:1; grid-column:1/-1; font-family:'Sora',sans-serif; font-weight:700; font-size:16px; line-height:1.55; color:var(--text); text-align:center; padding:18px 4px 4px; border-top:1px solid var(--line); margin-top:6px; }
 .story-lede .hl{color:var(--neon);}
+.story-source{ position:relative; z-index:1; grid-column:1/-1; font-size:10.5px; color:var(--muted); text-align:center; margin-top:10px; letter-spacing:.3px; }
 
 .value-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:22px;}
 .value-card{background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:28px 22px; text-align:center; transition:transform .35s ease, border-color .35s ease;}
@@ -394,14 +395,13 @@ footer{background:var(--black-2); border-top:1px solid var(--line); padding:60px
 <section class="section">
   <div class="container story-grid">
     <div class="story-visual reveal-left">
-      <div class="ring-deco" style="width:340px;height:340px;"></div>
-      <div class="ring-deco" style="width:250px;height:250px;"></div>
       <div class="story-stats">
-        <div class="story-stat"><div class="num">5.5M+</div><div class="lbl">UK small businesses forming the backbone of the economy</div></div>
-        <div class="story-stat"><div class="num">99%</div><div class="lbl">Of UK businesses are small or independent</div></div>
-        <div class="story-stat"><div class="num">24%</div><div class="lbl">Of UK sole traders still have no website at all</div></div>
-        <div class="story-stat"><div class="num">73%</div><div class="lbl">Of local searches now start on a mobile device</div></div>
-        <div class="story-lede">Britain runs on small business. <span class="hl">It's time small business ran on enterprise-grade websites.</span></div>
+        <div class="story-stat"><div class="num">5.5M</div><div class="lbl">Small businesses form the backbone of the UK economy</div></div>
+        <div class="story-stat"><div class="num">99%</div><div class="lbl">Of all UK businesses are small or independent</div></div>
+        <div class="story-stat"><div class="num">24%</div><div class="lbl">Of UK sole traders still have no website</div></div>
+        <div class="story-stat"><div class="num">73%</div><div class="lbl">Of local searches now start on mobile</div></div>
+        <div class="story-lede">Britain runs on small business.<br><span class="hl">It's time small business ran on enterprise-grade websites.</span></div>
+        <div class="story-source">Sources: DBT Business Population Estimates 2025 &middot; DSIT UK Business Data Survey 2025&ndash;26 &middot; BrightLocal 2026</div>
       </div>
     </div>
     <div class="reveal-right">
