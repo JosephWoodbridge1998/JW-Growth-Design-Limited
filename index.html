@@ -326,8 +326,18 @@ footer{background:var(--black-2); border-top:1px solid var(--line); padding:60px
     justify-content: center;
   }
 }
+.google-form-embed {
+  width: 100%;
+  overflow: hidden;
+}
 
-</style>
+.google-form-embed iframe {
+  display: block;
+  width: 100%;
+  min-height: 1050px;
+  border: 0;
+}
+</style>  
 </style>
 </head>
 <body>
@@ -581,21 +591,31 @@ footer{background:var(--black-2); border-top:1px solid var(--line); padding:60px
       </div>
     </div>
     <div class="audit-form reveal-right">
-      <h3>Request Your Free Health Check</h3>
-      <div class="sub">
-  No obligation. No spam. Just a clear view of what is working and what could
-  be improved.
+<h3>Request Your Free Health Check</h3>
+
+<div class="sub">
+  Share a few details below. We will review your website and aim to send your
+  personalised Health Check within two working days.
 </div>
-      <form onsubmit="event.preventDefault(); this.querySelector('.form-note').textContent='Thanks — we\'ll be in touch within 48 hours.';">
-        <div class="form-row">
-          <div class="form-group"><label>Full Name</label><input type="text" required placeholder="Jane Smith"></div>
-          <div class="form-group"><label>Company Name</label><input type="text" required placeholder="Smith & Co."></div>
-        </div>
-        <div class="form-group"><label>Email Address</label><input type="email" required placeholder="jane@company.co.uk"></div>
-        <div class="form-group"><label>Current Website Link</label><input type="url" required placeholder="https://www.yourwebsite.co.uk"></div>
-        <button type="submit">Request Free Health Check →</button>
-        <div class="form-note">We'll be in touch within 48 hours.</div>
-      </form>
+</div>
+     <p class="form-note">
+  By submitting this form, you agree that JW Growth &amp; Design may use the
+  details you provide to respond to your Website Health Check request.
+  Read our <a href="privacy.html">Privacy Policy</a>.
+</p>
+
+<div class="google-form-embed">
+  <iframe
+    src="https://docs.google.com/forms/d/e/1FAIpQLScNDL7X7ytGRRtrgOQSpgVWLUuBZZLu6vs_N6_VTGmUdjAS0g/viewform?embedded=true"
+    width="100%"
+    height="1050"
+    frameborder="0"
+    marginheight="0"
+    marginwidth="0"
+    title="Request your free Website Health Check">
+    Loading…
+  </iframe>
+</div>
     </div>
   </div>
 </section>
