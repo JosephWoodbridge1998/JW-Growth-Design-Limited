@@ -61,15 +61,15 @@ nav a.active::after{width:100%;}
 @keyframes pulseDot{0%{box-shadow:0 0 0 0 rgba(0,234,255,.6);}70%{box-shadow:0 0 0 9px rgba(0,234,255,0);}100%{box-shadow:0 0 0 0 rgba(0,234,255,0);}}
 .hero p.lead{color:var(--muted);font-size:17px;line-height:1.7;margin-bottom:34px;max-width:520px;}
 .hero-ctas{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:0;}
-.hero-quote{position:relative;z-index:2;margin:56px 5% 0;max-width:360px;border-left:2px solid var(--neon);padding-left:20px;}
+.hero-quote{position:absolute;left:5%;bottom:6%;z-index:2;max-width:340px;border-left:2px solid var(--neon);padding-left:20px;}
 .hero-quote p{font-family:'Sora',sans-serif;font-size:16px;font-weight:600;line-height:1.5;color:var(--text);margin-bottom:10px;}
 .hero-quote span{font-size:12px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;}
 .device-hero{position:relative;min-height:100vh;display:flex;align-items:center;overflow:hidden;background:radial-gradient(circle at 75% 30%,rgba(0,234,255,0.14),transparent 55%),linear-gradient(160deg,#0a0d12,#05070a 70%);}
 .device-hero .grid-lines{position:absolute;inset:0;background-image:linear-gradient(rgba(0,234,255,0.06) 1px,transparent 1px),linear-gradient(90deg,rgba(0,234,255,0.06) 1px,transparent 1px);background-size:44px 44px;mask-image:radial-gradient(circle at 70% 40%,black,transparent 70%);}
 .device-hero-overlay{position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,7,10,0.97) 0%,rgba(5,7,10,0.65) 42%,rgba(5,7,10,0.15) 68%,rgba(5,7,10,0.45) 100%);z-index:1;}
 .device-hero-content{position:relative;z-index:2;max-width:600px;padding:150px 5% 60px;}
-.device-stage{position:absolute;right:-4%;top:50%;transform:translateY(-46%);z-index:1;width:56%;max-width:760px;height:560px;pointer-events:none;}
-@media(max-width:1200px){.device-stage{width:66%;right:-8%;}}
+.device-stage{position:absolute;right:-4%;top:56%;transform:translateY(-46%);z-index:1;width:54%;max-width:740px;height:540px;pointer-events:none;}
+@media(max-width:1200px){.device-stage{width:64%;right:-8%;}}
 .dev-laptop{position:absolute;left:2%;top:12%;width:64%;transform:perspective(1400px) rotateY(-14deg) rotateX(2deg);transform-origin:center;filter:drop-shadow(0 40px 60px rgba(0,0,0,0.55));}
 .dev-laptop-screen{position:relative;width:100%;aspect-ratio:16/10.4;background:#02040a;border-radius:12px 12px 3px 3px;border:9px solid #14181f;border-bottom-width:12px;box-shadow:0 0 0 1px rgba(0,234,255,0.18),0 30px 70px -20px rgba(0,234,255,0.25);overflow:hidden;}
 .dev-laptop-notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:50px;height:8px;background:#14181f;border-radius:0 0 6px 6px;z-index:5;}
@@ -80,6 +80,9 @@ nav a.active::after{width:100%;}
 .dev-ipad{position:absolute;left:24%;bottom:-4%;width:30%;transform:perspective(1300px) rotateY(-16deg) rotateX(3deg) translateZ(-10px);filter:drop-shadow(0 32px 50px rgba(0,0,0,0.5));z-index:3;}
 .dev-ipad-body{position:relative;width:100%;aspect-ratio:3/4;background:#02040a;border-radius:16px;border:7px solid #14181f;box-shadow:0 0 0 1px rgba(0,234,255,0.18),0 24px 50px -16px rgba(0,234,255,0.28);overflow:hidden;}
 .dev-screen{position:absolute;inset:0;background:#05070a;overflow:hidden;}
+.dev-screen.theme-sunset{background:linear-gradient(160deg,#1a0f08,#05070a 70%);}
+.dev-screen.theme-forest{background:linear-gradient(160deg,#08150f,#05070a 70%);}
+.dev-screen.theme-orchid{background:linear-gradient(160deg,#160a1c,#05070a 70%);}
 .dev-topbar{display:flex;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid rgba(0,234,255,0.15);}
 .dev-dot{width:6px;height:6px;border-radius:50%;background:rgba(0,234,255,0.4);}
 .dev-cursor{position:absolute;width:10px;height:10px;border-radius:50%;background:var(--neon);box-shadow:0 0 10px var(--neon);z-index:10;animation:cursorMove 6s ease-in-out infinite;}
@@ -93,7 +96,23 @@ nav a.active::after{width:100%;}
 @keyframes loaderFill{0%,100%{width:0%;}50%{width:100%;}90%{width:100%;}}
 .dev-float-badge{position:absolute;background:var(--panel-2);border:1px solid var(--neon);border-radius:10px;padding:6px 10px;font-family:'Sora',sans-serif;font-size:10px;font-weight:700;color:var(--neon);box-shadow:0 0 20px rgba(0,234,255,0.35);opacity:0;animation:badgePop 6s ease-in-out infinite;white-space:nowrap;z-index:6;}
 @keyframes badgePop{0%,100%{opacity:0;transform:translateY(8px) scale(.9);}30%,60%{opacity:1;transform:translateY(0) scale(1);}}
-@media(max-width:980px){.device-stage{display:none;}.device-hero-content{max-width:100%;padding:150px 5% 60px;}}
+.dev-block.c-orange{background:linear-gradient(135deg,rgba(255,158,68,0.32),rgba(255,158,68,0.08));border-color:rgba(255,158,68,0.45);}
+.dev-block.c-gold{background:linear-gradient(135deg,rgba(255,209,102,0.3),rgba(255,209,102,0.08));border-color:rgba(255,209,102,0.42);}
+.dev-block.c-coral{background:linear-gradient(135deg,rgba(255,107,107,0.3),rgba(255,107,107,0.08));border-color:rgba(255,107,107,0.42);}
+.dev-block.c-green{background:linear-gradient(135deg,rgba(96,224,150,0.3),rgba(96,224,150,0.08));border-color:rgba(96,224,150,0.42);}
+.dev-block.c-mint{background:linear-gradient(135deg,rgba(70,214,190,0.3),rgba(70,214,190,0.08));border-color:rgba(70,214,190,0.42);}
+.dev-block.c-lime{background:linear-gradient(135deg,rgba(182,224,86,0.28),rgba(182,224,86,0.08));border-color:rgba(182,224,86,0.4);}
+.dev-block.c-pink{background:linear-gradient(135deg,rgba(224,110,196,0.3),rgba(224,110,196,0.08));border-color:rgba(224,110,196,0.42);}
+.dev-block.c-purple{background:linear-gradient(135deg,rgba(170,110,224,0.3),rgba(170,110,224,0.08));border-color:rgba(170,110,224,0.42);}
+.dev-block.c-lav{background:linear-gradient(135deg,rgba(140,150,240,0.28),rgba(140,150,240,0.08));border-color:rgba(140,150,240,0.4);}
+.dev-bar.c-orange{background:linear-gradient(90deg,rgba(255,158,68,0.6),rgba(255,158,68,0.1));}
+.dev-bar.c-green{background:linear-gradient(90deg,rgba(96,224,150,0.6),rgba(96,224,150,0.1));}
+.dev-bar.c-purple{background:linear-gradient(90deg,rgba(170,110,224,0.6),rgba(170,110,224,0.1));}
+.dev-tag{position:absolute;font-family:'Sora',sans-serif;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:3px 7px;border-radius:4px;opacity:0;animation:blockDraw 6s cubic-bezier(.16,1,.3,1) infinite;}
+.dev-tag.c-orange{background:rgba(255,158,68,0.18);color:#ffb066;border:1px solid rgba(255,158,68,0.4);}
+.dev-tag.c-green{background:rgba(96,224,150,0.18);color:#6fe0a0;border:1px solid rgba(96,224,150,0.4);}
+.dev-tag.c-purple{background:rgba(170,110,224,0.18);color:#bd8ef0;border:1px solid rgba(170,110,224,0.4);}
+@media(max-width:980px){.device-stage{display:none;}.device-hero-content{max-width:100%;padding:150px 5% 60px;}.hero-quote{position:relative;left:0;bottom:0;margin:40px 5% 0;max-width:none;}}
 .section{padding:110px 0;}
 .section-tag{color:var(--neon);font-weight:600;font-size:12.5px;letter-spacing:2.5px;text-transform:uppercase;display:flex;align-items:center;gap:10px;margin-bottom:16px;}
 .section-tag::before{content:'';width:24px;height:1.5px;background:var(--neon);}
@@ -173,7 +192,7 @@ footer{background:var(--black-2);border-top:1px solid var(--line);padding:60px 0
 @keyframes neonPulse{0%{box-shadow:0 0 0 0 rgba(0,234,255,.55);}70%{box-shadow:0 0 0 16px rgba(0,234,255,0);}100%{box-shadow:0 0 0 0 rgba(0,234,255,0);}}
 .wa-float:hover{transform:scale(1.1);}
 .wa-float svg{width:28px;height:28px;}
-@media (max-width:980px){nav{position:fixed;top:0;right:-100%;height:100vh;width:78%;background:var(--black-2);flex-direction:column;justify-content:center;transition:right .4s ease;z-index:1050;border-left:1px solid var(--line);}nav.open{right:0;}nav ul{flex-direction:column;align-items:center;gap:26px;}.nav-cta{display:none;}.burger{display:flex;}.hero-quote{margin:40px 5% 0;max-width:none;}.service-grid{grid-template-columns:1fr;}.audit-inner{grid-template-columns:1fr;gap:26px;}.footer-grid{grid-template-columns:1fr 1fr;}.form-row{grid-template-columns:1fr;}.section{padding:70px 0;}.chart-bars{gap:12px;}}
+@media (max-width:980px){nav{position:fixed;top:0;right:-100%;height:100vh;width:78%;background:var(--black-2);flex-direction:column;justify-content:center;transition:right .4s ease;z-index:1050;border-left:1px solid var(--line);}nav.open{right:0;}nav ul{flex-direction:column;align-items:center;gap:26px;}.nav-cta{display:none;}.burger{display:flex;}.service-grid{grid-template-columns:1fr;}.audit-inner{grid-template-columns:1fr;gap:26px;}.footer-grid{grid-template-columns:1fr 1fr;}.form-row{grid-template-columns:1fr;}.section{padding:70px 0;}.chart-bars{gap:12px;}}
 </style>
 </head>
 <body>
@@ -205,45 +224,48 @@ footer{background:var(--black-2);border-top:1px solid var(--line);padding:60px 0
 <div class="dev-laptop">
 <div class="dev-laptop-notch"></div>
 <div class="dev-laptop-screen">
-<div class="dev-screen">
+<div class="dev-screen theme-sunset">
 <div class="dev-topbar"><span class="dev-dot"></span><span class="dev-dot"></span><span class="dev-dot"></span></div>
-<div class="dev-bar" style="top:34px;left:14px;width:38%;animation-delay:.2s;"></div>
+<div class="dev-bar c-orange" style="top:34px;left:14px;width:38%;animation-delay:.2s;"></div>
 <div class="dev-bar" style="top:34px;right:14px;width:20%;animation-delay:.4s;"></div>
-<div class="dev-block" style="top:56px;left:14px;width:96px;height:64px;animation-delay:.6s;"></div>
-<div class="dev-block" style="top:56px;left:122px;width:96px;height:64px;animation-delay:.9s;"></div>
-<div class="dev-block" style="top:56px;left:230px;width:96px;height:64px;animation-delay:1.2s;"></div>
-<div class="dev-bar" style="top:134px;left:14px;width:60%;animation-delay:1.5s;"></div>
-<div class="dev-block" style="top:150px;left:14px;width:75%;height:38px;animation-delay:1.8s;"></div>
+<div class="dev-block c-orange" style="top:56px;left:14px;width:96px;height:64px;animation-delay:.6s;"></div>
+<div class="dev-block c-gold" style="top:56px;left:122px;width:96px;height:64px;animation-delay:.9s;"></div>
+<div class="dev-block c-coral" style="top:56px;left:230px;width:96px;height:64px;animation-delay:1.2s;"></div>
+<div class="dev-tag c-orange" style="top:60px;left:20px;animation-delay:1.0s;">Bakery Co.</div>
+<div class="dev-bar c-orange" style="top:134px;left:14px;width:60%;animation-delay:1.5s;"></div>
+<div class="dev-block c-gold" style="top:150px;left:14px;width:75%;height:38px;animation-delay:1.8s;"></div>
 <div class="dev-cursor" style="animation-delay:0s;"></div>
 <div class="dev-loader"></div>
-<div class="dev-float-badge" style="top:20%;right:6%;animation-delay:2.4s;">+248% Enquiries</div>
+<div class="dev-float-badge" style="top:16%;right:6%;animation-delay:2.4s;">+248% Enquiries</div>
 </div>
 </div>
 <div class="dev-laptop-base"></div>
 </div>
 <div class="dev-ipad">
 <div class="dev-ipad-body">
-<div class="dev-screen">
+<div class="dev-screen theme-forest">
 <div class="dev-topbar"><span class="dev-dot"></span><span class="dev-dot"></span></div>
-<div class="dev-bar" style="top:28px;left:10px;width:50%;animation-delay:.3s;"></div>
-<div class="dev-block" style="top:44px;left:10px;width:88%;height:70px;animation-delay:.7s;"></div>
-<div class="dev-block" style="top:122px;left:10px;width:42%;height:44px;animation-delay:1.1s;"></div>
-<div class="dev-block" style="top:122px;left:56%;width:42%;height:44px;animation-delay:1.4s;"></div>
-<div class="dev-bar" style="top:176px;left:10px;width:70%;animation-delay:1.7s;"></div>
+<div class="dev-bar c-green" style="top:28px;left:10px;width:50%;animation-delay:.3s;"></div>
+<div class="dev-block c-green" style="top:44px;left:10px;width:88%;height:70px;animation-delay:.7s;"></div>
+<div class="dev-tag c-green" style="top:50px;left:16px;animation-delay:1.2s;">Garden &amp; Landscape</div>
+<div class="dev-block c-mint" style="top:122px;left:10px;width:42%;height:44px;animation-delay:1.1s;"></div>
+<div class="dev-block c-lime" style="top:122px;left:56%;width:42%;height:44px;animation-delay:1.4s;"></div>
+<div class="dev-bar c-green" style="top:176px;left:10px;width:70%;animation-delay:1.7s;"></div>
 <div class="dev-cursor" style="animation-delay:1s;"></div>
 <div class="dev-loader"></div>
-<div class="dev-float-badge" style="bottom:14%;left:8%;animation-delay:3.6s;">Mobile-First ✓</div>
+<div class="dev-float-badge" style="bottom:12%;left:8%;animation-delay:3.6s;">Mobile-First &#10003;</div>
 </div>
 </div>
 </div>
 <div class="dev-iphone">
 <div class="dev-iphone-body">
 <div class="dev-iphone-notch"></div>
-<div class="dev-screen">
-<div class="dev-bar" style="top:22px;left:8px;width:60%;animation-delay:.5s;"></div>
-<div class="dev-block" style="top:36px;left:8px;width:84%;height:50px;animation-delay:.9s;"></div>
-<div class="dev-block" style="top:96px;left:8px;width:84%;height:34px;animation-delay:1.3s;"></div>
-<div class="dev-block" style="top:138px;left:8px;width:84%;height:34px;animation-delay:1.6s;"></div>
+<div class="dev-screen theme-orchid">
+<div class="dev-bar c-purple" style="top:22px;left:8px;width:60%;animation-delay:.5s;"></div>
+<div class="dev-block c-purple" style="top:36px;left:8px;width:84%;height:50px;animation-delay:.9s;"></div>
+<div class="dev-tag c-purple" style="top:42px;left:14px;animation-delay:1.3s;">Beauty Studio</div>
+<div class="dev-block c-pink" style="top:96px;left:8px;width:84%;height:34px;animation-delay:1.3s;"></div>
+<div class="dev-block c-lav" style="top:138px;left:8px;width:84%;height:34px;animation-delay:1.6s;"></div>
 <div class="dev-cursor" style="animation-delay:2s;"></div>
 <div class="dev-loader"></div>
 </div>
@@ -282,9 +304,9 @@ footer{background:var(--black-2);border-top:1px solid var(--line);padding:60px 0
 <div class="container">
 <div class="section-head center"><div class="section-tag center">What We Do</div><h2>Services Built for Independent Growth</h2><p>Everything you need to look, feel and perform like an enterprise brand &mdash; without the enterprise price tag.</p></div>
 <div class="service-grid">
-<div class="service-card reveal-scale"><div class="num">01</div><div class="service-icon">🔍</div><h3>Free Website Health Check</h3><p>A personalised review of your mobile experience, trust signals, local-search basics and enquiry journey, with 3&ndash;5 practical improvements.</p></div>
-<div class="service-card reveal-scale"><div class="num">02</div><div class="service-icon">🖥️</div><h3>Local Business Websites</h3><p>Mobile-first websites built to help local customers understand your services, trust your business and request a quote.</p></div>
-<div class="service-card reveal-scale"><div class="num">03</div><div class="service-icon">🛠️</div><h3>Website Care</h3><p>Ongoing hosting, SSL, backups, security checks, uptime monitoring and small website updates, without the technical hassle.</p></div>
+<div class="service-card reveal-scale"><div class="num">01</div><div class="service-icon">&#128269;</div><h3>Free Website Health Check</h3><p>A personalised review of your mobile experience, trust signals, local-search basics and enquiry journey, with 3&ndash;5 practical improvements.</p></div>
+<div class="service-card reveal-scale"><div class="num">02</div><div class="service-icon">&#128421;&#65039;</div><h3>Local Business Websites</h3><p>Mobile-first websites built to help local customers understand your services, trust your business and request a quote.</p></div>
+<div class="service-card reveal-scale"><div class="num">03</div><div class="service-icon">&#128295;&#65039;</div><h3>Website Care</h3><p>Ongoing hosting, SSL, backups, security checks, uptime monitoring and small website updates, without the technical hassle.</p></div>
 </div>
 </div>
 </section>
