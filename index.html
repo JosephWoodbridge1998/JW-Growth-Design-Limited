@@ -251,7 +251,68 @@ footer{background:var(--black-2); border-top:1px solid var(--line); padding:60px
   .form-row{grid-template-columns:1fr;}
   .section{padding:70px 0;}
   .chart-bars{gap:12px;}
+@media (max-width:980px){
+  /* your existing responsive CSS */
 }
+
+/* Paste the new Health Check CTA CSS here */
+
+.health-check-cta {
+  padding: 78px 0;
+  background: linear-gradient(135deg, rgba(0,234,255,.12), rgba(0,234,255,.03));
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.health-check-cta__inner {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 36px;
+  align-items: center;
+}
+
+.health-check-cta h2 {
+  max-width: 760px;
+  font-size: 34px;
+  line-height: 1.25;
+  margin-bottom: 14px;
+}
+
+.health-check-cta p {
+  max-width: 700px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.health-check-cta__button {
+  white-space: nowrap;
+}
+
+.footer-health-check {
+  margin-top: 20px;
+}
+
+.footer-health-check a {
+  color: var(--neon);
+  font-weight: 700;
+}
+
+@media (max-width:760px) {
+  .health-check-cta__inner {
+    grid-template-columns: 1fr;
+  }
+
+  .health-check-cta h2 {
+    font-size: 27px;
+  }
+
+  .health-check-cta__button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+</style>
 </style>
 </head>
 <body>
@@ -272,7 +333,11 @@ footer{background:var(--black-2); border-top:1px solid var(--line); padding:60px
       <li><a href="contact-us.html">Contact Us</a></li>
     </ul>
   </nav>
-  <div class="nav-cta"><a href="index.html#contact" class="btn">Free Website Health Check</a></div>
+  <<div class="nav-cta">
+  <a href="#health-check" class="btn solid">
+    Get Your Free Health Check
+  </a>
+</div>
 </header>
 
 <section class="hero" id="home">
@@ -323,15 +388,32 @@ footer{background:var(--black-2); border-top:1px solid var(--line); padding:60px
   <div class="hero-overlay"></div>
 
   <div class="hero-content">
-    <div class="hero-tag reveal"><span class="dot"></span>Digital Growth Consultancy for Independent Businesses</div>
-    <h1 class="reveal">Enterprise-Grade Websites, <span class="accent">Priced for Independents</span></h1>
-    <p class="lead reveal">JW Growth &amp; Design designs, builds and manages premium websites for local and independent businesses across the UK — giving you the visibility of a big brand at a fraction of the cost.</p>
-    <div class="hero-ctas reveal">
-      <a href="#contact" class="btn solid">Get Your Free Health Check →</a>
-      <a href="#services" class="btn ghost">Explore Services</a>
-    </div>
+  <div class="hero-tag reveal">
+    <span class="dot"></span>
+    Digital Growth Consultancy for Independent Businesses
   </div>
 
+  <h1 class="reveal">
+    Websites That Help Local Businesses
+    <span class="accent">Win More Enquiries</span>
+  </h1>
+
+  <p class="lead reveal">
+    We design, build and manage premium, mobile-first websites for local and
+    independent businesses—helping customers trust you, find you and get in touch.
+  </p>
+
+  <div class="hero-ctas reveal">
+    <a href="#health-check" class="btn solid">
+      Get Your Free Website Health Check →
+    </a>
+
+    <a href="#services" class="btn ghost">
+      Explore Services
+    </a>
+  </div>
+</div>
+  
   <div class="hero-quote reveal-left">
     <p>"In a tech-first era, your website isn't a brochure — it's the first handshake with every customer who finds you online."</p>
     <span>JW Growth &amp; Design</span>
@@ -423,13 +505,37 @@ footer{background:var(--black-2); border-top:1px solid var(--line); padding:60px
   </div>
 </section>
 
+  <section class="health-check-cta" id="health-check">
+  <div class="container health-check-cta__inner">
+    <div>
+      <div class="section-tag">Start Here</div>
+
+      <h2>
+        Find out whether your website is helping or costing you enquiries.
+      </h2>
+
+      <p>
+        Get a free, personalised review of your mobile experience, trust signals,
+        local-search basics and enquiry journey, plus 3–5 practical improvements.
+      </p>
+    </div>
+
+    <a class="btn solid health-check-cta__button" href="#contact">
+      Request Your Free Health Check →
+    </a>
+  </div>
+</section>
+  
 <section class="section audit-section" id="contact">
   <div class="container audit-inner">
     <div class="audit-text reveal-left">
       <div class="section-tag">Get Started</div>
       <h2>Get Your Free Website Health Check</h2>
-      <p>Send us your details and current website link. We'll assess your strengths, flag the areas holding you back, give you an overall health score, and hand you a clear roadmap to fix it — completely free.</p>
-      <div class="audit-steps">
+<p>
+  Send us your details and current website link. We will review your mobile
+  experience, trust signals, local-search basics and enquiry journey, then send
+  you a clear score and 3–5 practical improvements within two working days.
+</p>      <div class="audit-steps">
         <div class="audit-step"><div class="n">1</div><div><strong>Submit your details</strong><span>Takes under a minute — name, company, email and website link.</span></div></div>
         <div class="audit-step"><div class="n">2</div><div><strong>We run your health check</strong><span>Speed, mobile experience, SEO basics, design and conversion checks.</span></div></div>
         <div class="audit-step"><div class="n">3</div><div><strong>Receive your roadmap</strong><span>A clear, prioritised plan to fix what's costing you customers.</span></div></div>
@@ -437,7 +543,10 @@ footer{background:var(--black-2); border-top:1px solid var(--line); padding:60px
     </div>
     <div class="audit-form reveal-right">
       <h3>Request Your Free Health Check</h3>
-      <div class="sub">No obligation. No spam. Just a clear picture of where your website stands.</div>
+      <div class="sub">
+  No obligation. No spam. Just a clear view of what is working and what could
+  be improved.
+</div>
       <form onsubmit="event.preventDefault(); this.querySelector('.form-note').textContent='Thanks — we\'ll be in touch within 48 hours.';">
         <div class="form-row">
           <div class="form-group"><label>Full Name</label><input type="text" required placeholder="Jane Smith"></div>
@@ -457,7 +566,12 @@ footer{background:var(--black-2); border-top:1px solid var(--line); padding:60px
     <div class="footer-brand-block">
       <div class="brand"><div class="mark"><span>JW</span></div><div class="name">JW Growth <em>&</em> Design</div></div>
       <p>Delivering consultancy and premium web design to support growth for local and independent businesses across the UK.</p>
-    </div>
+    
+    <p class="footer-health-check">
+  <a href="#health-check">Get your free Website Health Check →</a>
+</p>
+      </div>
+    
     <div class="footer-col"><h5>Company</h5><ul><li><a href="about.html">About Us</a></li><li><a href="index.html#why">Why JW</a></li><li><a href="clients.html">Clients</a></li></ul></div>
     <div class="footer-col"><h5>Services</h5><ul><li><a href="index.html#services">Website Design</a></li><li><a href="work.html">See Our Work</a></li><li><a href="index.html#contact">Free Health Check</a></li></ul></div>
     <div class="footer-col"><h5>Contact</h5><ul><li><a href="contact-us.html">Get In Touch</a></li><li><a href="index.html#contact">Request Health Check</a></li></ul></div>
