@@ -47,6 +47,39 @@ nav a:hover,nav a.active{color:var(--neon)}
 .final p{color:var(--muted);max-width:600px;margin:10px auto}
 footer{padding:34px 0;color:var(--muted);font-size:12px}
 @media(max-width:900px){nav,.header-cta{display:none}.hero h1{font-size:34px}.cols,.process{grid-template-columns:1fr}}
+
+/* ===== Health Check report demo — deliberately bright/light, distinct from the dark theme above ===== */
+.health-check-demo{background:var(--black);color:var(--text);padding:78px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.health-check-demo-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}
+.health-check-demo h2{color:var(--text);font-size:29px;margin-bottom:14px}
+.health-check-demo p{color:var(--muted);max-width:480px;line-height:1.65}
+.health-check-demo .hc-note{font-size:12.5px;color:var(--muted);opacity:.75;margin-top:16px;font-style:italic}
+
+.tablet-frame{max-width:360px;margin:0 auto;background:linear-gradient(160deg,#f2f3f5,#dfe2e8);border:1px solid #d1d5db;border-radius:30px;padding:16px 16px 24px;box-shadow:0 34px 64px -22px rgba(20,24,34,.28);position:relative}
+.tablet-frame::after{content:'';position:absolute;bottom:9px;left:50%;transform:translateX(-50%);width:44px;height:4px;border-radius:3px;background:#c3c8d1}
+.tablet-screen{background:#fff;border-radius:16px;overflow:hidden;position:relative;aspect-ratio:3/4;box-shadow:inset 0 0 0 1px #eef0f3}
+.report-topbar{display:flex;align-items:center;gap:6px;padding:10px 14px;border-bottom:1px solid #edeff2;background:#fafbfc}
+.report-dot{width:7px;height:7px;border-radius:50%;background:#d8dce2}
+.report-filename{margin-left:8px;font-size:10.5px;color:#8b93a1;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.report-viewport{position:absolute;inset:38px 0 0 0;overflow:hidden;padding:14px}
+.report-scroll{display:flex;flex-direction:column;animation:hcReportScroll 20s linear infinite}
+.report-scroll:hover{animation-play-state:paused}
+.report-page{background:#fff;border:1px solid #eceef2;border-left-width:4px;border-radius:10px;padding:14px 16px;margin-bottom:14px;box-shadow:0 6px 18px -12px rgba(20,24,34,.18)}
+.report-page h4{font-size:13px;font-weight:800;margin-bottom:8px;letter-spacing:.2px}
+.report-page ul{list-style:none}
+.report-page li{font-size:11.5px;color:#4a5262;padding:3px 0;line-height:1.45}
+.report-page li:before{content:'—';color:#b7bcc6;margin-right:6px}
+.rp-weak{border-left-color:#e2725b}
+.rp-weak h4{color:#c85a3f}
+.rp-strong{border-left-color:#2f9e6e}
+.rp-strong h4{color:#278a5f}
+.rp-priority{border-left-color:#d98f2b}
+.rp-priority h4{color:#b8751d}
+.rp-value{border-left-color:#6a63d1}
+.rp-value h4{color:#5951bd}
+@keyframes hcReportScroll{from{transform:translateY(0)}to{transform:translateY(-50%)}}
+@media(prefers-reduced-motion:reduce){.report-scroll{animation:none}}
+@media(max-width:900px){.health-check-demo-grid{grid-template-columns:1fr;gap:36px;text-align:center}.health-check-demo p{margin:0 auto}.tablet-frame{max-width:300px}}
 </style>
 </head>
 <body>
@@ -96,6 +129,35 @@ footer{padding:34px 0;color:var(--muted);font-size:12px}
 <li>Content clarity and customer journey review</li>
 <li>Actionable improvement priorities</li>
 </ul>
+</div>
+</div>
+</section>
+
+<section class="health-check-demo" aria-labelledby="hc-demo-heading">
+<div class="wrap health-check-demo-grid">
+<div>
+<h2 id="hc-demo-heading">See exactly what you receive</h2>
+<p>Every Website Health Check comes with a clear, easy-to-read report — walking through what's holding your website back, what's already working well, and the priority fixes we'd tackle first.</p>
+<p class="hc-note">Placeholder copy — update with final wording once the report template is finalised.</p>
+</div>
+<div>
+<div class="tablet-frame">
+<div class="tablet-screen">
+<div class="report-topbar"><span class="report-dot"></span><span class="report-dot"></span><span class="report-dot"></span><span class="report-filename">Website_Health_Check_Report.pdf</span></div>
+<div class="report-viewport">
+<div class="report-scroll">
+<article class="report-page rp-weak"><h4>Weak Areas</h4><ul><li>Slow-loading homepage images</li><li>No clear call-to-action above the fold</li></ul></article>
+<article class="report-page rp-strong"><h4>Strong Areas</h4><ul><li>Clean, mobile-friendly layout</li><li>Fast, secure hosting setup</li></ul></article>
+<article class="report-page rp-priority"><h4>Priority Fixes</h4><ul><li>Compress and resize key images</li><li>Add a clear enquiry button to every page</li></ul></article>
+<article class="report-page rp-value"><h4>Our Value Add</h4><ul><li>Ongoing monitoring and quick fixes</li><li>Practical, jargon-free recommendations</li></ul></article>
+<article class="report-page rp-weak" aria-hidden="true"><h4>Weak Areas</h4><ul><li>Slow-loading homepage images</li><li>No clear call-to-action above the fold</li></ul></article>
+<article class="report-page rp-strong" aria-hidden="true"><h4>Strong Areas</h4><ul><li>Clean, mobile-friendly layout</li><li>Fast, secure hosting setup</li></ul></article>
+<article class="report-page rp-priority" aria-hidden="true"><h4>Priority Fixes</h4><ul><li>Compress and resize key images</li><li>Add a clear enquiry button to every page</li></ul></article>
+<article class="report-page rp-value" aria-hidden="true"><h4>Our Value Add</h4><ul><li>Ongoing monitoring and quick fixes</li><li>Practical, jargon-free recommendations</li></ul></article>
+</div>
+</div>
+</div>
+</div>
 </div>
 </div>
 </section>
