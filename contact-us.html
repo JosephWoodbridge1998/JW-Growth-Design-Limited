@@ -180,7 +180,24 @@ footer{background:var(--black-2); border-top:1px solid var(--line); padding:60px
       <div class="inner">
         <h2>Send Us a Message</h2>
         <div class="sub">Fill in your details below and we'll respond as soon as possible.</div>
-        <form onsubmit="event.preventDefault(); this.querySelector('.form-note').textContent='Thanks for reaching out — we\'ll be in touch shortly.';">
+        <form
+  action="https://api.web3forms.com/submit"
+  method="POST">>
+
+          <input
+  type="hidden"
+  name="access_key"
+  value="bc935229-8741-41a9-90f5-854c34b8db4a">
+
+<input
+  type="hidden"
+  name="subject"
+  value="New Contact Request from JW Growth & Design">
+
+<input
+  type="hidden"
+  name="from_name"
+  value="JW Growth & Design website">
           <div class="form-group">
             <label for="cu-name">Full Name</label>
             <input type="text" id="cu-name" name="name" required placeholder="Jane Smith">
