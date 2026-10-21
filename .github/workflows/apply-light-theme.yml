@@ -1,0 +1,52 @@
+name: Apply approved light theme
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/apply-light-theme.yml']
+permissions:
+  contents: write
+  pages: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Copy reviewed stylesheet
+        run: |
+          git fetch origin 18dd9b4f27788f35ad59f3111c1355cc1db7cd29
+          git show 18dd9b4f27788f35ad59f3111c1355cc1db7cd29:jw-light-theme.css > jw-light-theme.css
+      - name: Link theme to existing pages
+        shell: python
+        run: |
+          from pathlib import Path
+          import subprocess, re
+          files = subprocess.check_output(['git', 'ls-files', '-z', '*.html']).decode().split('\0')
+          for name in filter(None, files):
+              if name == 'preview-light.html':
+                  continue
+              path = Path(name)
+              text = path.read_text(encoding='utf-8')
+              if 'jw-light-theme.css' in text:
+                  continue
+              prefix = '../' * (len(path.parts) - 1)
+              tag = '<link rel="stylesheet" href="' + prefix + 'jw-light-theme.css">\n'
+              updated, count = re.subn(r'</head\s*>', lambda match: tag + match.group(0), text, count=1, flags=re.I)
+              if count:
+                  path.write_text(updated, encoding='utf-8')
+                  print('Updated:', name)
+              else:
+                  print('Skipped (no head):', name)
+      - name: Commit theme changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add jw-light-theme.css
+          git ls-files -z '*.html' | xargs -0 -r git add --
+          if ! git diff --cached --quiet; then
+            git commit -m 'Apply white-blue theme across website pages'
+            git push origin HEAD:main
+          fi
+      - name: Request Pages build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method POST repos/${{ github.repository }}/pages/builds
