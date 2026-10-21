@@ -1,0 +1,37 @@
+name: Apply portfolio device animations
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/apply-work-devices.yml']
+permissions:
+  contents: write
+  pages: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Link portfolio animation script
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          p = Path('work.html')
+          text = p.read_text(encoding='utf-8')
+          if 'jw-work-devices.js' not in text:
+              text, count = re.subn(r'</body\s*>', lambda m: '<script src="./jw-work-devices.js"></script>\n' + m.group(0), text, count=1, flags=re.I)
+              assert count == 1, 'Missing closing body tag; no file changed'
+              p.write_text(text, encoding='utf-8')
+      - name: Commit portfolio update
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add work.html
+          if ! git diff --cached --quiet; then
+            git commit -m 'Enable tablet and phone portfolio animations'
+            git push origin HEAD:main
+          fi
+      - name: Request Pages build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method POST repos/${{ github.repository }}/pages/builds
