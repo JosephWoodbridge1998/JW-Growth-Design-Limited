@@ -1,0 +1,21 @@
+:root{--black:#ffffff;--black-2:#f4f8fb;--panel:#ffffff;--panel-2:#edf5fa;--neon:#00eaff;--neon-2:#4fc3ff;--neon-glow:0 0 12px rgba(0,234,255,.18);--text:#252b33;--muted:#526171;--line:#d8e3ec;--shadow:0 20px 55px -25px rgba(22,50,75,.18);color-scheme:light;}
+body{background:#fff;color:var(--text);}
+header,header.scrolled{background:rgba(255,255,255,.96);border-bottom-color:var(--line);box-shadow:0 4px 24px rgba(22,50,75,.06);}
+.brand .mark{background:linear-gradient(145deg,#f0f9fc,#fff);}
+.brand .mark span,.brand .name em,nav a.active,.section-tag,.hero-tag,.stat-row .stat-num,.stat-response .bubble-tag,.stat-back,.chart-col .bar-value,.service-icon,.audit-step .n,.footer-health-check a{color:var(--text);text-shadow:none;}
+a:hover,.hoverlink:hover,nav a:hover{color:#252b33;filter:none;}
+.device-hero{background:radial-gradient(circle at 75% 30%,rgba(0,234,255,.11),transparent 55%),linear-gradient(160deg,#f4faff,#fff 70%);}
+.device-hero-overlay{background:linear-gradient(90deg,rgba(255,255,255,.97),rgba(255,255,255,.7) 42%,rgba(255,255,255,.08) 68%,rgba(255,255,255,.2));}
+.btn{color:var(--text);}
+.btn:hover,.btn.solid,.audit-form button{color:#162630;}
+.btn.ghost:hover,.stat-toggle:hover{color:var(--text);}
+.dev-float-badge{color:#252b33;background:#fff;box-shadow:0 8px 24px rgba(22,50,75,.12);}
+.stat-response,.service-card,.chart-wrap,.audit-form{box-shadow:0 12px 35px rgba(22,50,75,.05);}
+.stat-row .stat-num{text-shadow:none;}
+.service-card .num{color:#657789;}
+.form-group input,.form-group textarea,select{background:#f7fafc;color:var(--text);border-color:var(--line);}
+input::placeholder,textarea::placeholder{color:#657382;}
+footer{background:#f4f8fb;}
+.dev-laptop-screen,.dev-iphone-body,.dev-ipad-body{border-color:#14181f;}
+/* Device mockups keep their original example-site artwork and dark hardware. */
+@media(max-width:980px){nav{background:#fff;}nav a{color:#252b33;}}
