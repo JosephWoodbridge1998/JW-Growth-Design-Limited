@@ -22,13 +22,13 @@
   --black-2:#0a0d12;
   --panel:#0d1117;
   --panel-2:#11161d;
-  --neon:#00eaff;
-  --neon-2:#4fc3ff;
-  --neon-glow: 0 0 22px rgba(0,234,255,0.65);
+  --neon:#176b96;
+  --neon-2:#397da2;
+  --neon-glow: 0 0 22px rgba(23,107,150,0.65);
   --text:#f2f6f9;
   --muted:#93a1b0;
   --line:#1b212b;
-  --shadow: 0 30px 70px -30px rgba(0,234,255,0.2);
+  --shadow: 0 30px 70px -30px rgba(23,107,150,0.2);
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 html{scroll-behavior:smooth;}
@@ -38,7 +38,7 @@ a{text-decoration:none;color:inherit;}
 img{max-width:100%;display:block;}
 .container{max-width:1220px;margin:0 auto;padding:0 24px;}
 ::selection{background:var(--neon); color:#000;}
-a:hover, .hoverlink:hover{color:var(--neon); filter:drop-shadow(0 0 6px rgba(0,234,255,0.6));}
+a:hover, .hoverlink:hover{color:var(--neon); filter:drop-shadow(0 0 6px rgba(23,107,150,0.6));}
 
 .reveal{opacity:0;transform:translateY(34px);transition:opacity .8s cubic-bezier(.16,1,.3,1), transform .8s cubic-bezier(.16,1,.3,1);}
 .reveal.visible{opacity:1;transform:translateY(0);}
@@ -79,9 +79,9 @@ nav a.active::after{width:100%;}
   font-weight:600; font-size:14px; padding:13px 28px; border-radius:6px;
   transition: box-shadow .3s ease, background .3s ease, color .3s ease, transform .25s ease; cursor:pointer;
 }
-.btn:hover{background:var(--neon); color:#04121a; box-shadow:0 0 34px rgba(0,234,255,0.6); transform:translateY(-2px);}
-.btn.solid{background:var(--neon); color:#04121a; box-shadow:0 8px 26px -8px rgba(0,234,255,0.65);}
-.btn.solid:hover{box-shadow:0 12px 36px -6px rgba(0,234,255,0.9);}
+.btn:hover{background:var(--neon); color:#04121a; box-shadow:0 0 34px rgba(23,107,150,0.6); transform:translateY(-2px);}
+.btn.solid{background:var(--neon); color:#04121a; box-shadow:0 8px 26px -8px rgba(23,107,150,0.65);}
+.btn.solid:hover{box-shadow:0 12px 36px -6px rgba(23,107,150,0.9);}
 
 .section{padding:110px 0;}
 .section-tag{ color:var(--neon); font-weight:600; font-size:12.5px; letter-spacing:2.5px; text-transform:uppercase; display:flex; align-items:center; gap:10px; margin-bottom:16px; }
@@ -89,8 +89,8 @@ nav a.active::after{width:100%;}
 .section-tag.center{justify-content:center;}
 .section-tag.center::after{content:'';width:24px;height:1.5px;background:var(--neon);}
 
-.page-hero{ position:relative; padding:170px 0 90px; overflow:hidden; background:radial-gradient(circle at 80% 20%, rgba(0,234,255,0.12), transparent 55%), linear-gradient(160deg, #0a0d12, #05070a 70%); border-bottom:1px solid var(--line); }
-.page-hero .grid-lines{position:absolute; inset:0; background-image:linear-gradient(rgba(0,234,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(0,234,255,0.06) 1px, transparent 1px); background-size:44px 44px; mask-image:radial-gradient(circle at 70% 30%, black, transparent 75%);}
+.page-hero{ position:relative; padding:170px 0 90px; overflow:hidden; background:radial-gradient(circle at 80% 20%, rgba(23,107,150,0.12), transparent 55%), linear-gradient(160deg, #0a0d12, #05070a 70%); border-bottom:1px solid var(--line); }
+.page-hero .grid-lines{position:absolute; inset:0; background-image:linear-gradient(rgba(23,107,150,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(23,107,150,0.06) 1px, transparent 1px); background-size:44px 44px; mask-image:radial-gradient(circle at 70% 30%, black, transparent 75%);}
 .breadcrumb{position:relative; z-index:1; font-size:13px; color:var(--muted); margin-bottom:22px;}
 .breadcrumb a{color:var(--muted);}
 .breadcrumb a:hover{color:var(--neon);}
@@ -99,7 +99,7 @@ nav a.active::after{width:100%;}
 .page-hero p.lead{position:relative; z-index:1; color:var(--muted); font-size:17px; line-height:1.7; max-width:600px; margin-top:20px;}
 
 .contact-wrap{max-width:640px; margin:0 auto; background:var(--panel); border:1px solid var(--line); border-radius:20px; padding:50px; position:relative; overflow:hidden;}
-.contact-wrap::before{content:''; position:absolute; top:-100px; left:50%; transform:translateX(-50%); width:500px; height:260px; background:radial-gradient(circle, rgba(0,234,255,0.18), transparent 70%);}
+.contact-wrap::before{content:''; position:absolute; top:-100px; left:50%; transform:translateX(-50%); width:500px; height:260px; background:radial-gradient(circle, rgba(23,107,150,0.18), transparent 70%);}
 .contact-wrap .inner{position:relative; z-index:1;}
 .contact-wrap h2{font-size:28px; font-weight:700; margin-bottom:10px; text-align:center;}
 .contact-wrap .sub{color:var(--muted); font-size:14.5px; text-align:center; margin-bottom:36px;}
@@ -111,14 +111,14 @@ nav a.active::after{width:100%;}
   transition:border-color .3s ease, box-shadow .3s ease;
 }
 .form-group textarea{min-height:140px; resize:vertical; line-height:1.6;}
-.form-group input:focus, .form-group textarea:focus{border-color:var(--neon); box-shadow:0 0 0 3px rgba(0,234,255,0.18);}
+.form-group input:focus, .form-group textarea:focus{border-color:var(--neon); box-shadow:0 0 0 3px rgba(23,107,150,0.18);}
 .form-group ::placeholder{color:var(--muted);}
 .contact-wrap button{
   width:100%; margin-top:6px; background:var(--neon); color:#04121a; border:none; padding:16px;
   border-radius:8px; font-weight:700; font-size:15px; cursor:pointer;
   transition:box-shadow .3s ease, transform .25s ease; font-family:'Manrope',sans-serif;
 }
-.contact-wrap button:hover{box-shadow:0 12px 34px -8px rgba(0,234,255,0.75); transform:translateY(-2px);}
+.contact-wrap button:hover{box-shadow:0 12px 34px -8px rgba(23,107,150,0.75); transform:translateY(-2px);}
 .form-note{font-size:12px; color:var(--muted); margin-top:16px; text-align:center;}
 
 .contact-info-row{display:flex; justify-content:center; gap:40px; flex-wrap:wrap; margin-top:50px;}
@@ -136,7 +136,7 @@ footer{background:var(--black-2); border-top:1px solid var(--line); padding:60px
 .footer-bottom{display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;}
 
 .wa-float{ position:fixed; bottom:26px; right:26px; z-index:999; width:58px;height:58px;border-radius:50%; background:var(--neon); display:flex;align-items:center;justify-content:center; animation:neonPulse 2.4s infinite; transition:transform .3s ease; }
-@keyframes neonPulse{0%{box-shadow:0 0 0 0 rgba(0,234,255,.55);}70%{box-shadow:0 0 0 16px rgba(0,234,255,0);}100%{box-shadow:0 0 0 0 rgba(0,234,255,0);}}
+@keyframes neonPulse{0%{box-shadow:0 0 0 0 rgba(23,107,150,.55);}70%{box-shadow:0 0 0 16px rgba(23,107,150,0);}100%{box-shadow:0 0 0 0 rgba(23,107,150,0);}}
 .wa-float:hover{transform:scale(1.1);}
 .wa-float svg{width:28px;height:28px;}
 
@@ -152,7 +152,7 @@ footer{background:var(--black-2); border-top:1px solid var(--line); padding:60px
   .contact-wrap{padding:32px 22px;}
 }
 </style>
-<link rel="stylesheet" href="jw-light-theme.css">
+<link rel="stylesheet" href="jw-light-theme.css?v=20261023-site">
 </head>
 <body>
 
@@ -162,17 +162,7 @@ footer{background:var(--black-2); border-top:1px solid var(--line); padding:60px
     <div class="name">JW Growth <em>&</em> Design</div>
   </a>
   <div class="burger" id="burger"><span></span><span></span><span></span></div>
-  <nav id="mainNav">
-    <ul>
-      <li><a href="about.html">About Us</a></li>
-      <li><a href="index.html#services">Services</a></li>
-      <li><a href="clients.html">Clients</a></li>
-      <li><a href="index.html#why">Why JW</a></li>
-      <li><a href="work.html">See Our Work</a></li>
-      <li><a href="contact-us.html" class="active">Contact Us</a></li>
-      <li><a href="blog.html">Blog</a></li>
-    </ul>
-  </nav>
+  <nav id="mainNav"><ul><li><a href="/about.html">About Us</a></li><li><a href="/index.html#services">Services</a></li><li><a href="/clients.html">Clients</a></li><li><a href="/why-jw-growth-design.html">Why JW</a></li><li><a href="/work.html">See Our Work</a></li><li><a href="/contact-us.html" class="active">Contact Us</a></li><li><a href="/blog.html">Blog</a></li></ul></nav>
   <div class="nav-cta"><a href="index.html#contact" class="btn">Free Website Health Check</a></div>
 </header>
 
@@ -271,5 +261,6 @@ const observer = new IntersectionObserver((entries)=>{
 }, {threshold:0.15});
 revealEls.forEach(el=>observer.observe(el));
 </script>
+<script defer src="jw-site-refinements.js?v=20261023-site"></script>
 </body>
 </html>

@@ -1,0 +1,38 @@
+name: Prepare JW site-wide refinements on review branch
+on:
+  workflow_dispatch:
+  push:
+    branches: [site-wide-polish-and-demo-refresh]
+    paths:
+      - 'jw-light-theme.css'
+      - 'jw-site-refinements.js'
+      - 'jw-home-demos.js'
+      - 'blog.html'
+      - 'scripts/refresh-site.py'
+      - '.github/workflows/refresh-jw-site.yml'
+permissions:
+  contents: write
+concurrency:
+  group: jw-site-refresh-review
+  cancel-in-progress: false
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: site-wide-polish-and-demo-refresh
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate and update review HTML pages
+        run: python scripts/refresh-site.py
+      - name: Commit page updates to review branch only
+        run: |
+          git add -- '*.html'
+          if ! git diff --cached --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "Apply direct navigation and shared site refinements"
+            git push origin HEAD:site-wide-polish-and-demo-refresh
+          fi
