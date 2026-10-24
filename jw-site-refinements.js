@@ -16,3 +16,6 @@ const base='https://raw.githubusercontent.com/JosephWoodbridge1998/Cousins-Co/ma
 
 /* Load homepage additions only where needed, without changing the existing demos. */
 (function(){function load(){if((!document.querySelector('.device-stage')&&!document.getElementById('cu-message'))||document.getElementById('jw-home-additions-loader'))return;const script=document.createElement('script');script.id='jw-home-additions-loader';script.src='/jw-home-additions.js?v=20261024-1';script.async=true;document.head.append(script)}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load,{once:true});else load()})();
+
+/* Enhance the homepage data section without changing other page sections. */
+(function(){function load(){if(!document.querySelector('.device-stage')||document.getElementById('jw-home-data-loader'))return;const script=document.createElement('script');script.id='jw-home-data-loader';script.src='/jw-home-data.js?v=20261024-1';script.async=true;document.head.append(script)}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load,{once:true});else load()})();
