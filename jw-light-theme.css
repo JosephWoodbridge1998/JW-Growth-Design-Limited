@@ -20,3 +20,51 @@ a:hover,.hoverlink:hover,nav a:hover{color:#125575;filter:none}
 @media(max-width:1100px){.device-hero{grid-template-columns:1fr;padding-top:125px}.device-hero-content{max-width:720px}.device-stage{grid-column:1;max-width:900px!important;margin:30px auto 0!important;gap:32px}.hero-quote{grid-column:1}.blog-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:980px){nav{background:#fff}nav a{color:#252b33}.device-hero-content{padding:0!important}}
 @media(max-width:600px){.device-hero{padding:112px 5% 45px}.device-stage{gap:15px;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr) minmax(0,.78fr)}.dev-laptop-screen{border-width:5px;border-bottom-width:7px}.dev-ipad-body{border-width:4px}.dev-iphone-body{border-width:3px;border-radius:15px}.blog-grid{grid-template-columns:1fr}}
+
+/* Design-package cards only: prices and feature lists remain unchanged. */
+.pricing-grid{align-items:stretch;gap:25px}
+.pricing-grid .pricing-card{--tier:#176b96;--tint:#edf6fc;min-width:0;padding:32px 25px 25px;border:1px solid #c9dce9;border-top:5px solid var(--tier);border-radius:22px;background:linear-gradient(145deg,#fff,var(--tint));box-shadow:0 16px 42px #173b5610;transform:none}
+.pricing-grid .pricing-card:nth-child(2){--tier:#4264a6;--tint:#f0f2ff;border-color:#bccce5;border-top-color:var(--tier)}
+.pricing-grid .pricing-card:nth-child(3){--tier:#167a78;--tint:#eaf8f5;border-color:#bedfd9;border-top-color:var(--tier)}
+.pricing-grid .pricing-card:hover{transform:translateY(-4px);box-shadow:0 22px 48px #173b5620;border-color:var(--tier)}
+.pricing-grid .pricing-card--featured{transform:none;box-shadow:0 18px 45px #4264a620}
+.pricing-grid .pricing-badge{display:none}
+.pricing-grid .pricing-title{color:#173b56;font-size:22px;line-height:1.4;margin-bottom:13px}
+.pricing-grid .pricing-price{color:var(--tier);font-size:43px;margin:0 0 17px;letter-spacing:-1px}
+.pricing-grid .pricing-desc{font-size:13px;line-height:1.8;margin-bottom:20px;color:#526171}
+.pricing-grid .pricing-list{gap:0;margin-bottom:24px}
+.pricing-grid .pricing-list li{border-top:1px solid #d5e2ec;padding:11px 0;font-size:12px;line-height:1.65;color:#344759}
+.pricing-grid .pricing-list li:before{color:var(--tier)}
+.pricing-grid .pricing-card>.btn{margin-top:auto;min-height:46px;width:100%;border-color:var(--tier);color:var(--tier);background:white;box-shadow:none}
+.pricing-grid .pricing-card>.btn:hover,.pricing-grid .pricing-card>.btn.solid{background:var(--tier);color:white;box-shadow:0 8px 20px #173b5615}
+.pricing-grid .pricing-card>.btn:focus-visible{outline:3px solid var(--tier);outline-offset:4px}
+.pricing-grid .mini-laptop{background:linear-gradient(135deg,#dcebf5,#fff);border:1px solid #b7cfdf;border-radius:12px;padding:7px;margin:0 0 25px;box-shadow:0 12px 25px #173b5612;aspect-ratio:16/10.5}
+.pricing-grid .mini-screen{background:linear-gradient(150deg,#fff,var(--tint));border-radius:7px;animation-iteration-count:1!important}
+.pricing-grid .mini-screen *{animation-iteration-count:1!important}
+.pricing-grid .mini-screen:before{content:'● ● ●';position:absolute;top:1%;left:5%;font:8px Arial;letter-spacing:2px;color:#6c8ca5}
+.pricing-grid .mini-screen:after{position:absolute;left:7%;bottom:3%;font:7px Arial;letter-spacing:.2px;color:#526171;content:'Design illustration'}
+.pricing-grid .mini-screen .m-nav{top:15%;height:10%;background:var(--tier);border-radius:4px}
+.pricing-grid .mini-screen .m-nav:after{content:'HOME   SERVICES   CONTACT';position:absolute;left:8%;top:24%;font:6px Arial;letter-spacing:.6px;color:white}
+.pricing-grid .basic-mock .m-hero{top:32%;height:25%;background:linear-gradient(110deg,#bddced,#e8f2f8);border:1px solid #a9cfe4;border-radius:5px}
+.pricing-grid .basic-mock .m-hero:after{content:'Your business, clearly presented';position:absolute;left:8%;top:29%;font:700 8px Arial;color:#173b56;max-width:80%}
+.pricing-grid .basic-mock .m-block{top:64%;height:22%;background:white;border:1px solid #c3d9e7;border-radius:5px}
+.pricing-grid .basic-mock .b1:after,.pricing-grid .basic-mock .b2:after{position:absolute;left:12%;top:30%;font:7px Arial;color:#176b96;content:'Services'}
+.pricing-grid .basic-mock .b2:after{content:'Contact'}
+.pricing-grid .premium-mock .m-panel{top:32%;height:53%;width:51%;background:linear-gradient(135deg,#c4d1f0,#edf0fc);border:1px solid #aebfe4;border-radius:5px;animation:none!important}
+.pricing-grid .premium-mock .m-panel-a:after{content:'Brand-led design';position:absolute;left:12%;top:25%;font:700 9px Arial;line-height:1.5;color:#29467c;width:70%}
+.pricing-grid .premium-mock .m-panel-b{opacity:0}
+.pricing-grid .premium-mock .m-menu{top:33%;width:30%;height:50%;opacity:1;background:white;border:1px solid #bccae6;animation:jwPlanMenu 1.6s ease both!important}
+.pricing-grid .premium-mock .m-menu:after{content:'SERVICES\A OUR WORK\A CONTACT';white-space:pre-line;position:absolute;left:14%;top:15%;font:6px/2.4 Arial;color:#4264a6}
+.pricing-grid .growth-mock .m-stat{display:none}
+.pricing-grid .growth-mock:after{content:'Analytics illustration - not client results'}
+.pricing-grid .growth-mock .m-chart{width:73%;height:45%;bottom:19%;left:9%;gap:9%;border-bottom:1px solid #9cc8c0;background:repeating-linear-gradient(to top,transparent 0 22%,#d8ebe7 23% 24%)}
+.pricing-grid .growth-mock .m-bar{background:linear-gradient(#238d8b,#a2d7cf);height:30%;animation:jwPlanBars 1.4s ease both!important;transform-origin:bottom}
+.pricing-grid .growth-mock .m-bar:nth-child(2){height:48%;animation-delay:.1s!important}
+.pricing-grid .growth-mock .m-bar:nth-child(3){height:69%;animation-delay:.2s!important}
+.pricing-grid .growth-mock .m-bar:nth-child(4){height:88%;animation-delay:.3s!important}
+.pricing-grid .growth-mock .m-arrow{top:30%;right:8%;font-size:17px;color:#167a78;animation:none!important}
+@keyframes jwPlanMenu{from{opacity:.3;transform:translateY(-5px)}to{opacity:1;transform:none}}
+@keyframes jwPlanBars{from{transform:scaleY(.45)}to{transform:scaleY(1)}}
+@media(max-width:980px){.pricing-grid{gap:25px}.pricing-grid .pricing-card{max-width:580px;width:100%;margin:auto}.pricing-grid .pricing-card--featured,.pricing-grid .pricing-card--featured:hover{transform:none}}
+@media(max-width:500px){.pricing-grid .pricing-card{padding:25px 22px 22px}.pricing-grid .pricing-price{font-size:38px}}
+@media(prefers-reduced-motion:reduce){.pricing-grid *,.pricing-grid *:before,.pricing-grid *:after{animation:none!important;transition:none!important}.pricing-grid .pricing-card:hover{transform:none}}
