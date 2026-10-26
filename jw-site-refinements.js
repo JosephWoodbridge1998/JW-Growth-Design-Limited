@@ -1,5 +1,5 @@
 (function(){function init(){
-const items=[['About Us','/about.html'],['Services','/index.html#services'],['Client Testimonials','/clients.html'],['Why JW','/why-jw-growth-design.html'],['Contact Us','/contact-us.html'],['Blog','/blog.html']],routes=Object.fromEntries(items.map(function(p){return[p[0].toLowerCase(),p[1]]}));Object.assign(routes,{'about':'/about.html','clients':'/clients.html','see our work':'/clients.html'});
+const items=[['About Us','/about.html'],['Services','/#services'],['Client Testimonials','/clients.html'],['Why JW','/why-jw-growth-design.html'],['Contact Us','/contact-us.html'],['Blog','/blog.html']],routes=Object.fromEntries(items.map(function(p){return[p[0].toLowerCase(),p[1]]}));Object.assign(routes,{'about':'/about.html','clients':'/clients.html','see our work':'/clients.html'});
 function key(a){return a.textContent.trim().replace(/\s+/g,' ').toLowerCase()}
 function portfolio(a){return ['clients','see our work','client testimonials'].includes(key(a))}
 document.querySelectorAll('header a,nav a,footer a').forEach(function(a){const route=routes[key(a)];if(route)a.href=route;if(portfolio(a))a.textContent='Client Testimonials'});

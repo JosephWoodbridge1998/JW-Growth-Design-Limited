@@ -184,3 +184,6 @@ html=html[:match.start()]+match[1]+cards+match[2]+html[match.end():]
 assert html.count('class="blog-card"')==5 and '4 pages &middot;' not in html and 'Coming soon' not in html
 assert re.findall(r'Issue (\d{2}) &middot; Available PDF',html)==['01','02','03','04','05']
 path.write_text(html)
+
+from repair_indexing import enrich_blog
+enrich_blog()
