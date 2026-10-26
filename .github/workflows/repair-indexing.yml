@@ -1,0 +1,86 @@
+name: Repair JW indexing signals
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/repair_indexing.py'
+      - '.github/workflows/repair-indexing.yml'
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: jw-blog-pdf-publication
+  cancel-in-progress: false
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check existing Pages configuration
+        id: pages
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/pages" > /tmp/jw-pages.json
+          python - <<'PY'
+          import json,os
+          data=json.load(open('/tmp/jw-pages.json'))
+          assert data['build_type'] in ('legacy','workflow')
+          if data['build_type']=='legacy':
+              assert data['source']['branch']=='main' and data['source']['path']=='/'
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f: f.write('mode='+data['build_type']+'\n')
+          PY
+      - name: Apply and validate bounded repair
+        run: |
+          python scripts/repair_indexing.py
+          python -m py_compile scripts/repair_indexing.py scripts/build-blog-pdfs.py
+      - name: Commit repaired website files
+        run: |
+          git add index.html about.html clients.html contact-us.html blog.html why-jw-growth-design.html services/website-design.html services/Website-Growth.html services/website-health-check.html privacy.html jw-site-refinements.js scripts/build-blog-pdfs.py robots.txt sitemap.xml
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'Align canonical links, enrich blog and publish sitemap/privacy notice'
+            git push origin HEAD:main
+          fi
+      - name: Publish existing branch-based Pages site
+        if: steps.pages.outputs.mode == 'legacy'
+        run: |
+          build_url=$(gh api --method POST "repos/$GITHUB_REPOSITORY/pages/builds" --jq '.url')
+          for attempt in $(seq 1 60); do
+            status=$(gh api "$build_url" --jq '.status')
+            if [ "$status" = built ]; then exit 0; fi
+            if [ "$status" = errored ]; then gh api "$build_url"; exit 1; fi
+            sleep 5
+          done
+          exit 1
+      - name: Stage existing Actions-based Pages site
+        if: steps.pages.outputs.mode == 'workflow'
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess,shutil
+          for name in subprocess.check_output(['git','ls-files','-z']).decode().split('\0'):
+              if not name or name.startswith(('.github/','scripts/','blog/sources/')): continue
+              source=Path(name)
+              if source.is_file():
+                  dest=Path('.site')/name
+                  dest.parent.mkdir(parents=True,exist_ok=True)
+                  shutil.copy2(source,dest)
+          PY
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.pages.outputs.mode == 'workflow'
+        with:
+          path: .site
+      - uses: actions/deploy-pages@v4
+        if: steps.pages.outputs.mode == 'workflow'
