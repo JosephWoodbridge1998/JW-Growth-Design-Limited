@@ -1,0 +1,18 @@
+{
+  "contact_email": "info@jwgrowthanddesign.com",
+  "premium_heading": "Built for launch. Supported beyond it.",
+  "changed_files": [
+    "contact-us.html",
+    "index.html",
+    "jw-enquiry-context.js",
+    "privacy.html",
+    "services/premium-design.html"
+  ],
+  "unresolved_company_name_copy": {
+    "why-jw-growth-design.html": [
+      "Why work with Joseph?",
+      "Work directly with Joseph, with clear communication and agreed support arrangements. Support requests accepted 24/7, with responses during agreed support hours."
+    ]
+  },
+  "preserved": "Client quotes, review blocks, credits, showcase sites, technical account names and form delivery credentials."
+}
