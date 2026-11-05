@@ -1,0 +1,48 @@
+name: Connect the homepage service cards in a full-width row
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/homepage-service-strip.yml']
+permissions:
+  contents: write
+  pages: write
+concurrency:
+  group: homepage-service-strip
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Load the updated strip without changing homepage content
+        shell: python
+        run: |
+          from pathlib import Path
+          path=Path('index.html')
+          source=path.read_bytes().decode('utf-8')
+          marker='id="jw-service-strip-loader"'
+          if marker not in source:
+              end=source.lower().rfind('</body>')
+              assert end>=0,'Closing body not found; no file changed'
+              tag='<script id="jw-service-strip-loader" defer src="/jw-services-orbit-v6.js?v=20261105-1054"></script>'+chr(10)
+              updated=source[:end]+tag+source[end:]
+              assert updated.count(marker)==1
+              path.write_bytes(updated.encode('utf-8'))
+          else:
+              print('Service-strip loader already present.')
+      - name: Commit homepage loader update
+        run: |
+          git add index.html
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'Load full-width connected homepage service cards'
+            git push origin HEAD:main
+          fi
+      - name: Request GitHub Pages rebuild
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method POST repos/${{ github.repository }}/pages/builds
