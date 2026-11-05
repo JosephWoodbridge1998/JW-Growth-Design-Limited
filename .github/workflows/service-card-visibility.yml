@@ -1,0 +1,46 @@
+name: Apply consistent service-card colours and remove card links
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/service-card-visibility.yml']
+permissions:
+  contents: write
+  pages: write
+concurrency:
+  group: service-card-visibility
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Version the existing service-strip loader
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          path=Path('index.html')
+          source=path.read_bytes().decode('utf-8')
+          pattern=r'<script\b(?=[^>]*id="jw-service-strip-loader")[^>]*>\s*</script>'
+          matches=list(re.finditer(pattern,source))
+          assert len(matches)==1,'Expected one service-strip loader; no file changed'
+          tag='<script id="jw-service-strip-loader" defer src="/jw-services-orbit-v6.js?v=20261105-1105"></script>'
+          updated=source[:matches[0].start()]+tag+source[matches[0].end():]
+          if updated!=source:
+              path.write_bytes(updated.encode('utf-8'))
+      - name: Commit the loader version update
+        run: |
+          git add index.html
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'Load uniformly visible informational service cards'
+            git push origin HEAD:main
+          fi
+      - name: Request GitHub Pages rebuild
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method POST repos/${{ github.repository }}/pages/builds
