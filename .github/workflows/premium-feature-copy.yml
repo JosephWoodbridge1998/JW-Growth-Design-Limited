@@ -1,0 +1,53 @@
+name: Update Premium Design feature-list wording
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/premium-feature-copy.yml']
+permissions:
+  contents: write
+  pages: write
+concurrency:
+  group: premium-feature-copy
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Replace only the Premium feature list
+        shell: python
+        run: |
+          from pathlib import Path
+          path=Path('services/website-design.html')
+          source=path.read_bytes().decode('utf-8')
+          old='<ul class="pricing-list"><li>4–7 page responsive website</li><li>Custom styling and branding</li><li>Animations and page transitions</li><li>Contact and lead-capture forms</li><li>Performance optimisation for faster load times</li><li>Enhanced SEO (structured data, keyword research)</li><li>Analytics integration (Google Analytics / Plausible)</li></ul>'
+          new='<ul class="pricing-list"><li>Multipage responsive website</li><li>Custom styling and branding</li><li>Animations and page transitions</li><li>Contact and lead-capture forms</li><li>Performance optimisation for faster load times</li><li>Enhanced SEO (structured data, keyword research)</li><li>WhatsApp and email integration</li></ul>'
+          heading='<h2 class="pricing-title">Premium Design</h2>'
+          assert source.count(heading)==1,'Premium card not uniquely found; no file changed'
+          start=source.index(heading)
+          end=source.find('</article>',start)
+          assert end>start,'Premium card end not found; no file changed'
+          if old in source:
+              assert source.count(old)==1 and start<source.index(old)<end,'Premium list not uniquely found; no file changed'
+              updated=source.replace(old,new,1)
+          else:
+              assert source.count(new)==1 and start<source.index(new)<end,'Expected feature list not found; no file changed'
+              updated=source
+          if updated!=source:
+              path.write_bytes(updated.encode('utf-8'))
+      - name: Commit the Premium card copy change
+        run: |
+          git add services/website-design.html
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'Use multipage and WhatsApp/email wording in Premium features'
+            git push origin HEAD:main
+          fi
+      - name: Request GitHub Pages rebuild
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method POST repos/${{ github.repository }}/pages/builds
