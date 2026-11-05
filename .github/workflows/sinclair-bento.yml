@@ -1,0 +1,142 @@
+name: Build and publish Sinclair homepage bento
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/sinclair-bento.yml']
+permissions:
+  contents: write
+  pages: write
+concurrency:
+  group: homepage-sinclair-bento
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install browser capture tools
+        run: |
+          python -m pip install playwright
+          python -m playwright install --with-deps chromium
+      - name: Capture genuine site views, update bento and check desktop/mobile
+        shell: python
+        run: |
+          from pathlib import Path
+          from urllib.request import urlopen
+          from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
+          from playwright.async_api import async_playwright
+          import asyncio, threading, re, json
+          
+          WORK = '<section class="jw-home-work" id="jw-home-work" aria-labelledby="sb-heading"><div class="jwhw-wrap"><p class="jwhw-eyebrow">Client website delivered</p><h2 id="sb-heading">Local business. A stronger online presence.</h2><p class="jwhw-intro">A first website for Sinclair’s Landscape and Gardening Services—bringing their services, project work and contact options together.</p><div class="sb-grid" id="sinclair-bento"><article class="sb-tile sb-hero sb-linked" aria-labelledby="sb-hero-title"><div class="sb-browser"><span class="sb-browser-bar" aria-hidden="true">● ● ●</span><img src="/images/case-studies/sinclair-desktop.png" alt="Desktop view of the website delivered for Sinclair’s" width="1440" height="1000" loading="lazy"></div><div class="sb-phone"><img src="/images/case-studies/sinclair-mobile.png" alt="Mobile view of Sinclair’s project gallery" width="390" height="844" loading="lazy"></div><div class="sb-hero-copy"><span class="sb-kicker">New website launched</span><h3 id="sb-hero-title">Their work. Now online.</h3><p>Services, project photography and a clear route to enquire.</p><a href="https://www.sinclairslandscapingandgardeningservices.co.uk/" target="_blank" rel="noopener noreferrer">Visit the website ↗</a></div></article><article class="sb-tile sb-brief" aria-labelledby="sb-brief-title"><span class="sb-kicker">The brief</span><h3 id="sb-brief-title">A first website. A clearer route to enquiries.</h3><p>We brought services, real project photographs and WhatsApp contact together in one mobile-friendly website.</p></article><article class="sb-tile sb-identity" aria-label="Sinclair’s client identity"><div class="sb-van"><img src="/images/case-studies/sinclair-van.webp" alt="Sinclair’s work van" width="800" height="600" loading="lazy"></div><div class="sb-client-info"><img src="/images/case-studies/sinclair-logo.webp" alt="Sinclair’s Landscape and Gardening Services logo" width="64" height="64" loading="lazy"><div><h3>Sinclair’s Landscape and Gardening Services</h3><p>Tilehurst, Reading</p></div></div></article><article class="sb-tile sb-scope sb-linked" aria-labelledby="sb-scope-title"><h3 id="sb-scope-title">What we delivered</h3><ul class="sb-tags" aria-label="Project deliverables"><li>Responsive website</li><li>Project gallery</li><li>WhatsApp enquiries</li><li>Domain setup</li></ul><a class="sb-button" href="/clients.html#sinclair-case-study">View Full Case Study →</a></article></div><aside class="sb-concept" aria-labelledby="sb-concept-title"><div><span class="sb-kicker">Separate design concept</span><h3 id="sb-concept-title">Ember &amp; Grain</h3><p>Explore our fictional café website concept—not a delivered client commission.</p></div><a href="/showcases/coffee-shop/" target="_blank" rel="noopener noreferrer">Explore the concept ↗</a></aside></div></section>'
+          OUT=Path('images/case-studies')
+          BASE='https://raw.githubusercontent.com/JosephWoodbridge1998/Sinclair-s-Landscape-and-Garden-Services/main/'
+          SITE='https://www.sinclairslandscapingandgardeningservices.co.uk/'
+          
+          def amend(source):
+              pattern=r'''<section\b(?=[^>]*\bid=["']jw-home-work["'])[^>]*>[\s\S]*?</section\s*>'''
+              matches=list(re.finditer(pattern,source,re.I))
+              assert len(matches)==1,'Expected one existing work section; no page changed'
+              old=matches[0]
+              assert len(re.findall(r'<section\b',old.group(),re.I))==1,'Nested work sections require review'
+              pattern=r'''<section\b(?=[^>]*\bclass=["'][^"']*\bjw-retained-graph\b[^"']*["'])[^>]*>[\s\S]*?</section\s*>'''
+              graphs=list(re.finditer(pattern,source,re.I))
+              assert len(graphs)==1,'Expected one retained graph; no page changed'
+              graph=graphs[0].group()
+              assert len(re.findall(r'''\bclass=["'][^"']*\bchart-col\b[^"']*["']''',graph))==5,'Expected five metrics'
+              assert len(re.findall(r'<section\b',graph,re.I))==1
+              result=source[:old.start()]+WORK+source[old.end():]
+              if 'id="sinclair-bento-style"' not in result:
+                  end=result.lower().rfind('</head>')
+                  assert end>=0
+                  result=result[:end]+'<link id="sinclair-bento-style" rel="stylesheet" href="/jw-sinclair-bento.css?v=20261105-1032">\n'+result[end:]
+              assert result.count(graph)==1
+              assert result.count('id="sinclair-bento"')==1 and result.count('id="sb-concept-title"')==1
+              assert result.index('id="services"')<result.index('id="jw-home-work"')<result.index(graph)
+              return result
+          
+          async def main():
+              OUT.mkdir(parents=True,exist_ok=True)
+              for src,dest in [('sinclairs-logo.webp','sinclair-logo.webp'),('images/projects/work-van.webp','sinclair-van.webp')]:
+                  with urlopen(BASE+src,timeout=40) as response:
+                      data=response.read()
+                  assert data[:4]==b'RIFF' and data[8:12]==b'WEBP','Invalid client asset'
+                  (OUT/dest).write_bytes(data)
+              async with async_playwright() as p:
+                  browser=await p.chromium.launch()
+                  for width,height,name in [(1440,1000,'sinclair-desktop.png'),(390,844,'sinclair-mobile.png')]:
+                      context=await browser.new_context(viewport={'width':width,'height':height},reduced_motion='reduce',device_scale_factor=1)
+                      page=await context.new_page()
+                      response=await page.goto(SITE,wait_until='domcontentloaded',timeout=60000)
+                      assert response and response.ok,'Client site unavailable; no substitute screenshot generated'
+                      await page.locator('h1').wait_for()
+                      await page.add_style_tag(content='.reveal,.reveal-left,.reveal-right,.reveal-scale{opacity:1!important;transform:none!important}*,*::before,*::after{animation:none!important;transition:none!important}')
+                      if width==390:
+                          await page.locator('#work').wait_for(state='attached',timeout=30000)
+                          await page.evaluate("document.querySelectorAll('#work img').forEach(i=>i.loading='eager')")
+                          await page.evaluate("Promise.all(Array.from(document.querySelectorAll('#work img')).map(i=>i.decode()))")
+                          await page.evaluate("(()=>{const e=document.getElementById('work'),h=document.querySelector('header');scrollTo(0,e.getBoundingClientRect().top+scrollY-(h?h.getBoundingClientRect().height:80)-12)})()")
+                      await page.evaluate('document.fonts.ready')
+                      await page.screenshot(path=str(OUT/name))
+                      await context.close()
+                  path=Path('index.html')
+                  source=path.read_bytes().decode('utf-8')
+                  result=amend(source)
+                  path.write_bytes(result.encode('utf-8'))
+                  audit=Path('bento-checks')
+                  audit.mkdir(exist_ok=True)
+                  server=ThreadingHTTPServer(('127.0.0.1',8765),SimpleHTTPRequestHandler)
+                  threading.Thread(target=server.serve_forever,daemon=True).start()
+                  checks=[]
+                  try:
+                      for width in [1280,390]:
+                          page=await browser.new_page(viewport={'width':width,'height':1000},reduced_motion='reduce')
+                          await page.goto('http://127.0.0.1:8765/',wait_until='domcontentloaded')
+                          grid=page.locator('#sinclair-bento')
+                          await grid.wait_for()
+                          await grid.scroll_into_view_if_needed()
+                          await page.evaluate("document.querySelectorAll('#sinclair-bento img').forEach(i=>i.loading='eager')")
+                          await page.evaluate("Promise.all(Array.from(document.querySelectorAll('#sinclair-bento img')).map(i=>i.decode()))")
+                          assert await grid.locator(':scope > article').count()==4
+                          assert await grid.locator('.sb-tags li').count()==4
+                          assert await grid.locator('.sb-button').get_attribute('href')=='/clients.html#sinclair-case-study'
+                          assert await grid.evaluate('(e)=>e.scrollWidth<=e.clientWidth+1'),'Bento overflow'
+                          rects=await grid.locator(':scope > article').evaluate_all('(els)=>els.map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y}})')
+                          if width==390:
+                              assert all(abs(r['x']-rects[0]['x'])<2 for r in rects)
+                              assert all(rects[i+1]['y']>rects[i]['y'] for i in range(3))
+                          else:
+                              assert rects[0]['x']<rects[1]['x'] and rects[2]['x']<rects[3]['x']
+                          await grid.screenshot(path=str(audit/('preview-'+str(width)+'.png')))
+                          checks.append({'width':width,'four_tiles':True,'images_loaded':True,'layout_passed':True,'no_overflow':True})
+                          await page.close()
+                  finally:
+                      server.shutdown()
+                      await browser.close()
+                  (audit/'checks.json').write_text(json.dumps(checks,indent=2))
+          
+          asyncio.run(main())
+      - name: Save preview screenshots and checks
+        uses: actions/upload-artifact@v4
+        with:
+          name: sinclair-bento-browser-checks
+          path: bento-checks/
+      - name: Commit checked homepage and client images
+        run: |
+          git add index.html images/case-studies/sinclair-desktop.png images/case-studies/sinclair-mobile.png images/case-studies/sinclair-logo.webp images/case-studies/sinclair-van.webp
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'Publish Sinclair client bento with genuine website previews'
+            git push origin HEAD:main
+          fi
+      - name: Request GitHub Pages rebuild
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method POST repos/${{ github.repository }}/pages/builds
