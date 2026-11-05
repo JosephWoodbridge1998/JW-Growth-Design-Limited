@@ -1,0 +1,109 @@
+name: Update homepage services copy and heading colour
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/update-services-supporting-copy.yml']
+permissions:
+  contents: write
+  pages: write
+concurrency:
+  group: homepage-services-copy
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Apply both approved homepage changes
+        shell: python
+        run: |
+          from pathlib import Path
+          from html.parser import HTMLParser
+          import re
+          
+          NEW = 'Premium website design and dependable support—helping your business stand out, build trust and make it easier for customers to choose you.'
+          BLUE = '<span class="jw-services-blue-word" style="color:#176b96!important;-webkit-text-fill-color:#176b96!important">{}</span>'
+          
+          class Headings(HTMLParser):
+              def __init__(self, text):
+                  super().__init__(convert_charrefs=False)
+                  self.text = text
+                  self.lines = [0] + [m.end() for m in re.finditer('\n', text)]
+                  self.current = None
+                  self.found = []
+              def position(self):
+                  line, col = self.getpos()
+                  return self.lines[line-1] + col
+              def handle_starttag(self, tag, attrs):
+                  if tag in {'h1','h2','h3'}:
+                      assert self.current is None, 'Unexpected nested headings; no file changed'
+                      self.current = {'tag':tag, 'start':self.position(), 'parts':[], 'nodes':[]}
+                  elif tag == 'br' and self.current is not None:
+                      self.current['parts'].append(' ')
+              def handle_data(self, data):
+                  if self.current is not None:
+                      self.current['parts'].append(data)
+                      self.current['nodes'].append((self.position(), data))
+              def handle_endtag(self, tag):
+                  if self.current is not None and tag == self.current['tag']:
+                      self.current['end'] = self.position()+len('</'+tag+'>')
+                      self.found.append(self.current)
+                      self.current = None
+          
+          def amend(text):
+              prefix = 'Everything you need to look, feel and perform like an enterprise brand '
+              suffix = ' without the enterprise price tag.'
+              variants = [prefix + dash + suffix for dash in ('—','&mdash;','&#8212;','&#x2014;')]
+              matches = [(old, text.count(old)) for old in variants if old in text]
+              if not matches:
+                  assert text.count(NEW) == 1, 'Supporting sentence not matched exactly; no file changed'
+              else:
+                  assert sum(count for _, count in matches) == 1, 'Expected one original sentence; no file changed'
+                  text = text.replace(matches[0][0], NEW, 1)
+              parser = Headings(text)
+              parser.feed(text)
+              targets = [h for h in parser.found if re.sub(r'\s+', ' ', ''.join(h['parts'])).strip().casefold() == 'services built for independent growth']
+              assert len(targets) == 1, 'Expected one matching services heading; no file changed'
+              heading = targets[0]
+              raw = text[heading['start']:heading['end']]
+              if 'jw-services-blue-word' in raw:
+                  assert raw.count('class="jw-services-blue-word"') == 2, 'Unexpected existing highlights; no file changed'
+              else:
+                  edits = []
+                  total = 0
+                  for start, data in heading['nodes']:
+                      updated, count = re.subn(r'\b(?:Independent|Growth)\b', lambda m: BLUE.format(m.group(0)), data, flags=re.I)
+                      total += count
+                      if count:
+                          edits.append((start, start+len(data), updated))
+                  assert total == 2, 'Expected exactly two heading words; no file changed'
+                  for start, end, updated in reversed(edits):
+                      text = text[:start]+updated+text[end:]
+              assert text.count(NEW) == 1
+              return text
+          
+          if __name__ == '__main__':
+              path = Path('index.html')
+              original = path.read_bytes().decode('utf-8')
+              updated = amend(original)
+              if updated != original:
+                  path.write_bytes(updated.encode('utf-8'))
+                  print('Updated the services supporting sentence and two heading-word colours only.')
+              else:
+                  print('Both approved homepage changes are already present.')
+      - name: Commit the approved homepage edit
+        run: |
+          git add index.html
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'Refine homepage services tagline and blue heading emphasis'
+            git push origin HEAD:main
+          fi
+      - name: Request GitHub Pages rebuild
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method POST repos/${{ github.repository }}/pages/builds
