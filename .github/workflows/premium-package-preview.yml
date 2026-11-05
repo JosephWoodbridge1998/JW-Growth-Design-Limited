@@ -1,0 +1,81 @@
+name: Upgrade only the Premium package-card preview
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/premium-package-preview.yml']
+permissions:
+  contents: write
+  pages: write
+concurrency:
+  group: premium-package-preview
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Replace only the Premium card mini-screen
+        shell: python
+        run: |
+          from pathlib import Path
+          from html.parser import HTMLParser
+          import re
+          
+          class Nodes(HTMLParser):
+              def __init__(self,s):
+                  super().__init__(convert_charrefs=False)
+                  self.s=s;self.lines=[0]+[m.end() for m in re.finditer('\n',s)];self.stack=[];self.nodes=[]
+              def pos(self):
+                  line,col=self.getpos();return self.lines[line-1]+col
+              def handle_starttag(self,tag,attrs):
+                  n={'tag':tag,'attrs':dict(attrs),'start':self.pos(),'open_end':self.pos()+len(self.get_starttag_text()),'end':None,'parent':self.stack[-1] if self.stack else None}
+                  self.nodes.append(n)
+                  if tag not in {'area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'}:self.stack.append(n)
+              def handle_endtag(self,tag):
+                  for i in range(len(self.stack)-1,-1,-1):
+                      if self.stack[i]['tag']==tag:
+                          self.stack[i]['end']=self.s.find('>',self.pos())+1;del self.stack[i:];break
+          
+          def has(n,c):return c in (n['attrs'].get('class') or '').split()
+          def one(ns):
+              assert len(ns)==1,'Expected one matching card/preview; no file changed'
+              return ns[0]
+          def amend(s):
+              p=Nodes(s);p.feed(s)
+              premium=one([n for n in p.nodes if n['tag']=='article' and has(n,'pricing-card--featured')])
+              basic=one([n for n in p.nodes if n['tag']=='article' and has(n,'pricing-card') and not has(n,'pricing-card--featured')])
+              basic_raw=s[basic['start']:basic['end']]
+              screen=one([n for n in p.nodes if n['tag']=='div' and has(n,'mini-screen') and premium['start']<n['start']<premium['end']])
+              tail=s[screen['end']:premium['end']]
+              new='<div class="mini-screen premium-film-screen"><iframe title="Premium Design cinematic concept journeys" src="/services/premium-card.html?v=20261105-1633" loading="lazy" tabindex="-1" aria-hidden="true" sandbox="allow-scripts allow-same-origin" style="display:block;width:100%;height:100%;border:0;pointer-events:none"></iframe></div>'
+              out=s[:screen['start']]+new+s[screen['end']:]
+              if 'id="premium-card-frame-style"' not in out:
+                  end=out.lower().rfind('</head>');assert end>=0
+                  style='<style id="premium-card-frame-style">.pricing-grid .premium-film-screen:before,.pricing-grid .premium-film-screen:after{display:none!important}.pricing-grid .premium-film-screen{background:#edf4f9!important;animation:none!important}</style>'
+                  out=out[:end]+style+out[end:]
+              if 'id="premium-card-host-loader"' not in out:
+                  end=out.lower().rfind('</body>');assert end>=0
+                  out=out[:end]+'<script id="premium-card-host-loader" defer src="/services/premium-card-host.js?v=20261105-1633"></script>'+out[end:]
+              assert out.count(basic_raw)==1 and out.count(tail)==1,'Package content altered; no file changed'
+              assert out.count('class="mini-screen premium-film-screen"')==1
+              return out
+          
+          if __name__=='__main__':
+              path=Path('services/website-design.html');s=path.read_bytes().decode('utf-8');out=amend(s)
+              if s!=out:path.write_bytes(out.encode('utf-8'))
+      - name: Commit the package-card preview hookup
+        run: |
+          git add services/website-design.html
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'Use cinematic concept journeys in Premium package card'
+            git push origin HEAD:main
+          fi
+      - name: Request GitHub Pages rebuild
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method POST repos/${{ github.repository }}/pages/builds
