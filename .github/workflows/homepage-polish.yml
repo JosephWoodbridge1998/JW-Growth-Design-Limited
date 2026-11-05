@@ -1,0 +1,167 @@
+name: Apply final homepage layout and work-section updates
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/homepage-polish.yml']
+permissions:
+  contents: write
+  pages: write
+concurrency:
+  group: homepage-polish
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Apply approved targeted homepage changes
+        shell: python
+        run: |
+          from pathlib import Path
+          from html.parser import HTMLParser
+          import re
+          
+          RELEASE = '20261105-1012'
+          VOID = {'area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'}
+          WORK = '<section class="jw-home-work" id="jw-home-work" aria-labelledby="jwhw-title"><div class="jwhw-wrap"><p class="jwhw-eyebrow">Our work</p><h2 id="jwhw-title">Client work &amp; website concepts.</h2><p class="jwhw-intro">Explore a delivered client website alongside a café design concept. Each example is labelled so you can see the distinction.</p><div class="jwhw-grid"><article class="jwhw-card"><div class="jwhw-identity"><img src="https://raw.githubusercontent.com/JosephWoodbridge1998/Sinclair-s-Landscape-and-Garden-Services/main/sinclairs-logo.webp" alt="Sinclair’s Landscape and Gardening Services logo" width="240" height="145" loading="lazy"></div><div class="jwhw-body"><span class="jwhw-label">Delivered client website</span><h3>Sinclair’s Landscape &amp; Gardening Services</h3><p>A service-led website bringing together the business’s branding, project photographs, before-and-after gallery and clear WhatsApp enquiry routes.</p><div class="jwhw-actions"><a href="/clients.html#sinclair-case-study">Explore the client project →</a><a href="https://www.sinclairslandscapingandgardeningservices.co.uk/" target="_blank" rel="noopener noreferrer">Visit website ↗</a></div></div></article><article class="jwhw-card"><div class="jwhw-identity jwhw-wordmark" aria-label="Ember and Grain concept wordmark">ember&nbsp;<em>&amp;</em>&nbsp;grain</div><div class="jwhw-body"><span class="jwhw-label">Fictional café website concept</span><h3>Ember &amp; Grain</h3><p>A café design example combining menu categories, brand storytelling and clear visiting information. This is an original JW concept, not a delivered client commission.</p><div class="jwhw-actions"><a href="/showcases/coffee-shop/" target="_blank" rel="noopener noreferrer">Explore the design concept ↗</a></div></div></article></div></div></section>'
+          
+          class Page(HTMLParser):
+              def __init__(self, text):
+                  super().__init__(convert_charrefs=True)
+                  self.source = text
+                  self.lines = [0]+[m.end() for m in re.finditer('\n', text)]
+                  self.stack = []
+                  self.nodes = []
+              def position(self):
+                  line, col = self.getpos()
+                  return self.lines[line-1]+col
+              def handle_starttag(self, tag, attrs):
+                  start = self.position()
+                  n = {'tag':tag,'attrs':dict(attrs),'start':start,'open_end':start+len(self.get_starttag_text()),'end':None,'parent':self.stack[-1] if self.stack else None,'parts':[]}
+                  self.nodes.append(n)
+                  if tag not in VOID:
+                      self.stack.append(n)
+                  else:
+                      n['end'] = n['open_end']
+              def handle_startendtag(self, tag, attrs):
+                  self.handle_starttag(tag, attrs)
+                  if tag not in VOID:
+                      self.handle_endtag(tag)
+              def handle_endtag(self, tag):
+                  for i in range(len(self.stack)-1, -1, -1):
+                      if self.stack[i]['tag'] == tag:
+                          self.stack[i]['end'] = self.source.find('>',self.position())+1
+                          del self.stack[i:]
+                          break
+              def handle_data(self, data):
+                  for n in self.stack:
+                      n['parts'].append(data)
+          
+          def parse(text):
+              p=Page(text)
+              p.feed(text)
+              return p
+          
+          def has(n, cls):
+              return cls in (n['attrs'].get('class') or '').split()
+          
+          def one(nodes, label):
+              assert len(nodes)==1, label+' not uniquely identified; no files changed'
+              return nodes[0]
+          
+          def within(n, parent):
+              return parent['start']<n['start']<parent['end']
+          
+          def text(n):
+              return re.sub(r'\s+',' ',''.join(n['parts'])).strip()
+          
+          def edit(text, edits):
+              for start,end,value in sorted(edits,reverse=True):
+                  text=text[:start]+value+text[end:]
+              return text
+          
+          def homepage(source):
+              p=parse(source)
+              hero=one([n for n in p.nodes if n['tag']=='section' and has(n,'device-hero')],'Landing section')
+              services=one([n for n in p.nodes if n['tag']=='section' and n['attrs'].get('id')=='services'],'Services')
+              graph=one([n for n in p.nodes if has(n,'jw-retained-graph')],'Retained graph section')
+              assert services['end']<=graph['start'], 'Unexpected section order; no files changed'
+              graph_raw=source[graph['start']:graph['end']]
+              assert len([n for n in p.nodes if has(n,'chart-col') and within(n,graph)])==5, 'Five graph metrics not found; no files changed'
+              heading=one([n for n in p.nodes if n['tag'] in {'h2','h3','h4'} and within(n,services) and re.search(r'health\s*check|audit',text(n),re.I)],'Health-check service title')
+              explore=one([n for n in p.nodes if n['tag']=='a' and within(n,hero) and re.search(r'explore\s+services',text(n),re.I)],'Explore Services link')
+              opening=source[explore['start']:explore['open_end']]
+              opening,count=re.subn(r'''href\s*=\s*["'][^"']*["']''','href="#services"',opening,count=1,flags=re.I)
+              assert count==1, 'Explore Services URL not found; no files changed'
+              edits=[(heading['open_end'],source.rfind('</',heading['open_end'],heading['end']),'Free Website Health Check'),(explore['start'],explore['end'],opening+'Explore Services ↓</a>')]
+              existing=[n for n in p.nodes if n['attrs'].get('id')=='jw-home-work']
+              if existing:
+                  old=one(existing,'Work section')
+                  assert old['parent'] is services['parent'] and services['end']<=old['start'] and old['end']<=graph['start'], 'Unexpected existing work section; no files changed'
+                  edits.append((old['start'],old['end'],WORK))
+              else:
+                  edits.append((services['end'],services['end'],'\n'+WORK+'\n'))
+              if 'id="jw-home-polish-style"' not in source:
+                  end=source.lower().rfind('</head>')
+                  assert end>=0
+                  edits.append((end,end,'<link id="jw-home-polish-style" rel="stylesheet" href="/jw-home-polish.css?v='+RELEASE+'">\n'))
+              if 'id="jw-home-polish-loader"' not in source:
+                  end=source.lower().rfind('</body>')
+                  assert end>=0
+                  edits.append((end,end,'<script id="jw-home-polish-loader" defer src="/jw-home-polish.js?v='+RELEASE+'"></script>\n'))
+              for n in p.nodes:
+                  if n['tag']=='script' and (n['attrs'].get('src') or '').split('?')[0].lstrip('./')=='jw-home-demos.js':
+                      raw=source[n['start']:n['open_end']]
+                      raw,count=re.subn(r'''src\s*=\s*["'][^"']*["']''','src="/jw-home-demos.js?v='+RELEASE+'"',raw,count=1,flags=re.I)
+                      assert count==1
+                      edits.append((n['start'],n['open_end'],raw))
+              result=edit(source,edits)
+              assert result.count(graph_raw)==1, 'Graph changed; no files changed'
+              after=parse(result)
+              work_node=one([n for n in after.nodes if n['attrs'].get('id')=='jw-home-work'],'New work section')
+              aservices=one([n for n in after.nodes if n['attrs'].get('id')=='services'],'Final services')
+              agraph=one([n for n in after.nodes if has(n,'jw-retained-graph')],'Final graph')
+              assert aservices['end']<=work_node['start']<work_node['end']<=agraph['start']
+              assert 'Free Website Health Check' in result
+              return result
+          
+          def film(source):
+              p=parse(source)
+              edits=[]
+              for name in ('pause','replay'):
+                  n=one([n for n in p.nodes if n['tag']=='button' and n['attrs'].get('id')==name],name+' control')
+                  if 'hidden' not in n['attrs']:
+                      edits.append((n['open_end']-1,n['open_end']-1,' hidden'))
+              result=edit(source,edits)
+              result=re.sub(r'(?<=/jw-home-film\.css\?v=)[0-9-]+',RELEASE,result)
+              return result
+          
+          def loader(source):
+              pattern=r'/jw-portfolio-cinematic-v4\.html\?v=[0-9-]+'
+              assert len(re.findall(pattern,source))==1, 'Film URL not uniquely found; no files changed'
+              return re.sub(pattern,'/jw-portfolio-cinematic-v4.html?v='+RELEASE,source,count=1)
+          
+          if __name__=='__main__':
+              paths=[Path('index.html'),Path('jw-portfolio-cinematic-v4.html'),Path('jw-home-demos.js')]
+              originals=[p.read_bytes().decode('utf-8') for p in paths]
+              results=[homepage(originals[0]),film(originals[1]),loader(originals[2])]
+              for path,old,new in zip(paths,originals,results):
+                  if new!=old:
+                      path.write_bytes(new.encode('utf-8'))
+              print('Added labelled work cards, renamed health-check service, updated Services arrow, loaded quote/button layout refinement, and hid film controls without changing their IDs or controller.')
+      - name: Commit updated homepage files
+        run: |
+          git add index.html jw-portfolio-cinematic-v4.html jw-home-demos.js
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'Polish homepage actions and introduce labelled work examples'
+            git push origin HEAD:main
+          fi
+      - name: Request GitHub Pages rebuild
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method POST repos/${{ github.repository }}/pages/builds
