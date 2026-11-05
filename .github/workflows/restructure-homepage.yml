@@ -1,0 +1,161 @@
+name: Restructure homepage services and data sections
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/restructure-homepage.yml']
+permissions:
+  contents: write
+  pages: write
+concurrency:
+  group: homepage-structure
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Reorder homepage while preserving the five-metric graph
+        shell: python
+        run: |
+          from pathlib import Path
+          from html.parser import HTMLParser
+          from html import escape
+          import re
+          
+          REMOVED = 'the local customer journey is increasingly digital'
+          GRAPH = 'why a professional online presence is no longer optional'
+          VOID = {'area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'}
+          
+          class Node:
+              def __init__(self, tag, attrs, start, open_end, parent):
+                  self.tag = tag
+                  self.attrs = dict(attrs)
+                  self.start = start
+                  self.open_end = open_end
+                  self.end = open_end if tag in VOID else None
+                  self.parent = parent
+                  self.parts = []
+              def has(self, cls):
+                  return cls in (self.attrs.get('class') or '').split()
+              def text(self):
+                  return re.sub(r'\s+', ' ', ''.join(self.parts)).strip().casefold()
+          
+          class Page(HTMLParser):
+              def __init__(self, text):
+                  super().__init__(convert_charrefs=True)
+                  self.text = text
+                  self.lines = [0]+[m.end() for m in re.finditer('\n', text)]
+                  self.stack = []
+                  self.nodes = []
+              def position(self):
+                  line, col = self.getpos()
+                  return self.lines[line-1]+col
+              def handle_starttag(self, tag, attrs):
+                  n = Node(tag, attrs, self.position(), self.position()+len(self.get_starttag_text()), self.stack[-1] if self.stack else None)
+                  self.nodes.append(n)
+                  if tag not in VOID:
+                      self.stack.append(n)
+                  if tag == 'br':
+                      for parent in self.stack:
+                          parent.parts.append(' ')
+              def handle_startendtag(self, tag, attrs):
+                  self.handle_starttag(tag, attrs)
+                  if tag not in VOID:
+                      self.handle_endtag(tag)
+              def handle_data(self, data):
+                  for node in self.stack:
+                      node.parts.append(data)
+              def handle_endtag(self, tag):
+                  for i in range(len(self.stack)-1, -1, -1):
+                      if self.stack[i].tag == tag:
+                          self.stack[i].end = self.text.find('>', self.position())+1
+                          del self.stack[i:]
+                          break
+          
+          def one(nodes, message):
+              assert len(nodes) == 1, message+'; no files changed'
+              return nodes[0]
+          
+          def section(node):
+              while node is not None and node.tag != 'section':
+                  node = node.parent
+              assert node is not None and node.end is not None, 'Section boundary not found; no files changed'
+              return node
+          
+          def parse(text):
+              p = Page(text)
+              p.feed(text)
+              return p
+          
+          def amend(text):
+              p = parse(text)
+              hero = one([n for n in p.nodes if n.tag == 'section' and n.has('device-hero')], 'Expected one landing section')
+              services = one([n for n in p.nodes if n.tag == 'section' and n.attrs.get('id') == 'services'], 'Expected one services section')
+              chart = one([n for n in p.nodes if n.has('chart-wrap') and GRAPH in n.text()], 'Expected the retained graph')
+              metrics = [n for n in p.nodes if n.has('chart-col') and chart.start < n.start < chart.end]
+              assert len(metrics) == 5, 'Expected exactly five graph metrics; no files changed'
+              chart_raw = text[chart.start:chart.end]
+              headings = [n for n in p.nodes if n.tag in {'h1','h2','h3'} and n.text() == REMOVED]
+              if not headings:
+                  retained = section(chart)
+                  assert retained.has('jw-retained-graph'), 'Data heading not found; no files changed'
+                  siblings = [n for n in p.nodes if n.parent is hero.parent]
+                  assert siblings[siblings.index(hero)+1] is services, 'Services are not directly after landing; no files changed'
+                  assert not any(n.has('stat-row') for n in p.nodes), 'Unexpected remaining statistic rows; no files changed'
+                  return text
+              data = section(one(headings, 'Expected one removable data heading'))
+              graph_section = section(chart)
+              assert hero.parent is services.parent and data.parent is hero.parent and graph_section.parent is hero.parent, 'Unexpected section nesting; no files changed'
+              assert hero.end <= data.start and hero.end <= services.start, 'Unexpected section order; no files changed'
+              assert services is not data and services is not graph_section, 'Overlapping services/data sections; no files changed'
+              service_raw = text[services.start:services.end]
+              graph_id = graph_section.attrs.get('id') or ''
+              data_id = data.attrs.get('id') or ''
+              identity = ' id="'+escape(graph_id, quote=True)+'"' if graph_id else ''
+              anchor = '<span id="'+escape(data_id, quote=True)+'" aria-hidden="true"></span>' if data_id and data_id != graph_id else ''
+              retained = '<section class="section jw-retained-graph"'+identity+' style="background:var(--black-2);position:relative"><div class="container">'+anchor+chart_raw+'</div></section>'
+              edits = [(services.start, services.end, ''), (hero.end, hero.end, '\n'+service_raw+'\n')]
+              if data is graph_section:
+                  edits.append((data.start, data.end, retained))
+              else:
+                  assert data.end <= graph_section.start or graph_section.end <= data.start, 'Overlapping graph/data blocks; no files changed'
+                  edits.extend([(data.start, data.end, ''), (graph_section.start, graph_section.end, retained)])
+              updated = text
+              for start, end, replacement in sorted(edits, reverse=True):
+                  updated = updated[:start]+replacement+updated[end:]
+              after = parse(updated)
+              assert not any(n.tag in {'h1','h2','h3'} and n.text() == REMOVED for n in after.nodes), 'Data heading still present; no files changed'
+              assert not any(n.has('stat-row') for n in after.nodes), 'Statistic rows still present; no files changed'
+              assert updated.count(chart_raw) == 1, 'Graph markup changed; no files changed'
+              assert updated.count(service_raw) == 1, 'Service content changed; no files changed'
+              ahero = one([n for n in after.nodes if n.tag == 'section' and n.has('device-hero')], 'Landing section changed')
+              aservices = one([n for n in after.nodes if n.tag == 'section' and n.attrs.get('id') == 'services'], 'Services changed')
+              siblings = [n for n in after.nodes if n.parent is ahero.parent]
+              assert siblings[siblings.index(ahero)+1] is aservices, 'Reorder failed; no files changed'
+              return updated
+          
+          if __name__ == '__main__':
+              path = Path('index.html')
+              original = path.read_bytes().decode('utf-8')
+              updated = amend(original)
+              retired = '/* Retired: the duplicate homepage percentage-data section was removed. Keep the five-metric graph in index.html unchanged. */\n'
+              if updated != original:
+                  path.write_bytes(updated.encode('utf-8'))
+              Path('jw-home-data.js').write_bytes(retired.encode('utf-8'))
+              print('Services moved directly after landing; duplicate data list removed; exact five-metric graph retained; legacy data replacement disabled.')
+      - name: Commit approved homepage changes
+        run: |
+          git add index.html jw-home-data.js
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'Move services after landing and retain only the five-metric graph'
+            git push origin HEAD:main
+          fi
+      - name: Request GitHub Pages rebuild
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method POST repos/${{ github.repository }}/pages/builds
