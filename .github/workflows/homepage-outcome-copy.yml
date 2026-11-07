@@ -1,0 +1,132 @@
+name: Apply approved outcome-led homepage copy
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/homepage-outcome-copy.yml']
+permissions:
+  contents: write
+  pages: write
+concurrency:
+  group: homepage-outcome-copy
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Apply checked copy replacements
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          lead_old = 'We design, build and host websites for self-employed Trades, small and independent businesses across Reading and the UK, with one point of contact from launch to ongoing support.'
+          lead_new = 'We design, build and host websites for self-employed trades, small and independent businesses across Reading and the UK—helping you stand out and win enquiries, without the burden of managing a website yourself.'
+          guidance = 'Choose Barbers, Coffee Shop, Tattoo Studio or Hair / Nail Salon to explore a hub. Other business guides are coming soon.'
+          titles = [
+              ('Clear services. Clear prices.', 'Premium design. A business that stands out.'),
+              ('A useful menu. An easier visit.', 'A premium look. Priced for a local business.'),
+              ('Show your work. Start better enquiries.', 'Less website admin. More time for your business.'),
+              ('Make finding and buying feel simple.', 'Show what you do. Make the next step easy.'),
+              ('Your business. Your website. Your next chapter.', 'Easier enquiries. Through WhatsApp and email.')
+          ]
+          hero = Path('jw-hero-v5.js')
+          film = Path('jw-home-film.js')
+          hero_text = hero.read_text()
+          film_text = film.read_text()
+          def replace_once(text, old, new):
+              if old not in text:
+                  assert new in text, 'Expected copy not found: ' + old
+                  return text
+              assert text.count(old) == 1, 'Ambiguous replacement: ' + old
+              return text.replace(old, new, 1)
+          hero_text = replace_once(hero_text, lead_old, lead_new)
+          if guidance in hero_text:
+              assert hero_text.count(guidance) == 1
+              hero_text = hero_text.replace(guidance, '')
+          hero_text = hero_text.replace('<p id="jw-business-help-v5">Business-specific pages are coming soon.</p>', '<p id="jw-business-help-v5" hidden></p>')
+          old_help = "if(help)help.textContent=ready?'Explore the '+select.value+' hub, website example and next steps.':'';"
+          new_help = "if(help){help.textContent=ready?'Explore the '+select.value+' hub, website example and next steps.':'';help.hidden=!ready;}"
+          hero_text = replace_once(hero_text, old_help, new_help)
+          for old, new in titles:
+              film_text = replace_once(film_text, old, new)
+          assert lead_new in hero_text and lead_old not in hero_text
+          assert guidance not in hero_text
+          assert all(new in film_text and old not in film_text for old, new in titles)
+          hero.write_text(hero_text)
+          film.write_text(film_text)
+          assets = ['jw-hero-v5.js', 'jw-home-film.js']
+          version = '20261107-outcomes-1'
+          paths = list(Path('.').glob('*.js')) + list(Path('.').glob('*.html'))
+          for path in paths:
+              text = path.read_text()
+              revised = text
+              for asset in assets:
+                  pattern = re.escape(asset) + r'(?:\?v=[A-Za-z0-9_.-]+)?(?=[\x22\x27])'
+                  revised = re.sub(pattern, asset + '?v=' + version, revised)
+              if revised != text:
+                  path.write_text(revised)
+      - name: Check JavaScript syntax and permitted changes
+        run: |
+          set -euo pipefail
+          node --check jw-hero-v5.js
+          node --check jw-home-film.js
+          git diff --check
+          test -z "$(git diff --name-only -- .github/workflows)"
+          git diff --name-only | while IFS= read -r file; do
+            case "$file" in *.js|*.html) ;; *) echo "Unexpected change: $file"; exit 1 ;; esac
+          done
+      - name: Commit approved copy and verify remote main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git add -- '*.js' '*.html'
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'Update homepage lead, remove hub guidance and add outcome-led captions'
+            git push origin HEAD:main
+          fi
+          expected=$(git rev-parse HEAD)
+          actual=$(gh api repos/${{ github.repository }}/git/ref/heads/main --jq '.object.sha')
+          test "$expected" = "$actual"
+          echo "DEPLOY_COMMIT=$expected" >> "$GITHUB_ENV"
+          echo "Approved copy committed to remote main: $expected" >> "$GITHUB_STEP_SUMMARY"
+      - name: Request and verify Pages build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api --method POST repos/${{ github.repository }}/pages/builds > /tmp/pages-request.json
+          build_url=$(jq -r '.url' /tmp/pages-request.json)
+          test -n "$build_url"
+          test "$build_url" != null
+          for attempt in $(seq 1 40); do
+            gh api "$build_url" > /tmp/pages-status.json
+            status=$(jq -r '.status' /tmp/pages-status.json)
+            if [ "$status" = built ]; then
+              test "$(jq -r '.commit' /tmp/pages-status.json)" = "$DEPLOY_COMMIT"
+              echo "Pages build verified for $DEPLOY_COMMIT" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            if [ "$status" = errored ]; then cat /tmp/pages-status.json; exit 1; fi
+            sleep 10
+          done
+          echo 'Pages build verification timed out' >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+      - name: Verify published copy assets
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 12); do
+            if curl --fail --silent --show-error --location --max-time 25 "https://jwgrowthanddesign.com/jw-hero-v5.js?v=20261107-outcomes-1&commit=$DEPLOY_COMMIT" -o /tmp/hero.js && curl --fail --silent --show-error --location --max-time 25 "https://jwgrowthanddesign.com/jw-home-film.js?v=20261107-outcomes-1&commit=$DEPLOY_COMMIT" -o /tmp/film.js && grep -q 'without the burden of managing a website yourself' /tmp/hero.js && ! grep -q 'Other business guides are coming soon' /tmp/hero.js && grep -q 'Premium design. A business that stands out.' /tmp/film.js && grep -q 'Easier enquiries. Through WhatsApp and email.' /tmp/film.js; then
+              echo 'Published hero and rotating-caption assets verified.' >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo 'Published copy not verified; do not report deployment success.' >> "$GITHUB_STEP_SUMMARY"
+          exit 1
