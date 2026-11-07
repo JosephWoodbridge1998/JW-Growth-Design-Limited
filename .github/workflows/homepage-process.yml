@@ -1,0 +1,124 @@
+name: Add and verify homepage process section
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/homepage-process.yml', 'scripts/homepage-process.html']
+permissions:
+  contents: write
+  pages: write
+concurrency:
+  group: homepage-process
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Insert between delivered work and retained graphs
+        shell: python
+        run: |
+          from pathlib import Path
+          from html.parser import HTMLParser
+          path = Path('index.html')
+          source = path.read_bytes().decode('utf-8')
+          component = Path('scripts/homepage-process.html').read_text().strip()
+          class Locate(HTMLParser):
+              def __init__(self, text):
+                  super().__init__(); self.offsets = [0]; self.work = []; self.graphs = []
+                  for line in text.splitlines(keepends=True): self.offsets.append(self.offsets[-1] + len(line))
+              def handle_starttag(self, tag, attrs):
+                  if tag != 'section': return
+                  attrs = dict(attrs); line, column = self.getpos(); start = self.offsets[line-1] + column
+                  if attrs.get('id') == 'jw-home-work': self.work.append(start)
+                  if 'jw-retained-graph' in attrs.get('class', '').split(): self.graphs.append(start)
+          assert 'id="jw-home-process"' not in source, 'Process already exists; refusing to duplicate it'
+          loc = Locate(source); loc.feed(source)
+          assert len(loc.work) == len(loc.graphs) == 1
+          assert loc.work[0] < loc.graphs[0]
+          at = loc.graphs[0]
+          preceding = source[:at].rstrip()
+          assert preceding.endswith('</section>'), 'Expected a section boundary before graphs'
+          result = source[:at] + component + '\n' + source[at:]
+          assert result.replace(component + '\n', '', 1) == source
+          assert result.count('id="jw-home-process"') == 1
+          path.write_bytes(result.encode('utf-8'))
+      - name: Install browser checks
+        run: |
+          python -m pip install playwright
+          python -m playwright install --with-deps chromium
+      - name: Verify placement and responsive layout
+        shell: python
+        run: |
+          from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
+          from pathlib import Path
+          from playwright.sync_api import sync_playwright
+          import threading
+          server = ThreadingHTTPServer(('127.0.0.1', 8765), SimpleHTTPRequestHandler)
+          threading.Thread(target=server.serve_forever, daemon=True).start()
+          Path('process-checks').mkdir(exist_ok=True)
+          try:
+              with sync_playwright() as p:
+                  browser = p.chromium.launch()
+                  for width in [1440, 768, 390]:
+                      page = browser.new_page(viewport={'width':width, 'height':1000}, reduced_motion='reduce')
+                      page.goto('http://127.0.0.1:8765/', wait_until='domcontentloaded')
+                      section = page.locator('#jw-home-process')
+                      section.scroll_into_view_if_needed()
+                      assert section.locator('li').count() == 5
+                      assert section.locator('h3').all_text_contents() == ['Discovery','Plan','Build','Review','Website live']
+                      assert page.evaluate("Boolean(document.querySelector('#jw-home-work').compareDocumentPosition(document.querySelector('#jw-home-process')) & Node.DOCUMENT_POSITION_FOLLOWING)")
+                      assert page.evaluate("Boolean(document.querySelector('#jw-home-process').compareDocumentPosition(document.querySelector('.jw-retained-graph')) & Node.DOCUMENT_POSITION_FOLLOWING)")
+                      assert section.evaluate('(e)=>e.scrollWidth<=e.clientWidth+1')
+                      assert section.locator('.jwp-card').evaluate_all('(els)=>els.every(e=>e.scrollWidth<=e.clientWidth+1)')
+                      assert section.locator('a').get_attribute('href') == '/contact-us.html'
+                      section.screenshot(path='process-checks/process-'+str(width)+'.png')
+                      page.close()
+                  browser.close()
+          finally:
+              server.shutdown()
+      - uses: actions/upload-artifact@v4
+        with:
+          name: homepage-process-browser-checks
+          path: process-checks/
+      - name: Commit checked homepage only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git diff --check
+          test "$(git diff --name-only)" = index.html
+          git add -- index.html
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Add Discovery to Website live process between delivered work and graphs'
+          git push origin HEAD:main
+          expected=$(git rev-parse HEAD)
+          actual=$(gh api repos/${{ github.repository }}/git/ref/heads/main --jq '.object.sha')
+          test "$expected" = "$actual"
+          echo "DEPLOY_COMMIT=$expected" >> "$GITHUB_ENV"
+          echo "Homepage process committed to remote main: $expected" >> "$GITHUB_STEP_SUMMARY"
+      - name: Request Pages rebuild
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method POST repos/${{ github.repository }}/pages/builds
+      - name: Verify public homepage
+        shell: python
+        run: |
+          import os, time
+          from urllib.request import urlopen
+          url = 'https://jwgrowthanddesign.com/?revision=' + os.environ['DEPLOY_COMMIT']
+          for attempt in range(30):
+              try:
+                  with urlopen(url, timeout=20) as response: text = response.read().decode('utf-8')
+                  assert text.count('id="jw-home-process"') == 1
+                  assert 'A clear, collaborative process' in text
+                  with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary: summary.write('Public homepage process section verified.\n')
+                  break
+              except Exception as error:
+                  print('Public verification pending:', error)
+                  if attempt == 29: raise
+                  time.sleep(10)
