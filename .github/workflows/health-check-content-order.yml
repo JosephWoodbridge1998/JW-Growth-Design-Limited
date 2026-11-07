@@ -1,0 +1,103 @@
+name: Reorder health-check overview above report
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/health-check-content-order.yml']
+permissions:
+  contents: write
+  pages: write
+concurrency:
+  group: health-check-content-order
+  cancel-in-progress: false
+jobs:
+  reorder:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Move existing content without changing its wording
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          from html.parser import HTMLParser
+          path = Path('services/website-health-check.html')
+          source = path.read_bytes().decode('utf-8')
+          def one(pattern, text):
+              matches = list(re.finditer(pattern, text, re.S))
+              assert len(matches) == 1, 'Expected exactly one section: ' + pattern
+              return matches[0]
+          overview = one(r'<section class="section" id="what-is-it">.*?</section>', source)
+          audience = one(r'<section class="section audience-section" id="who-is-it-for">.*?</section>', source)
+          report = one(r'<section class="report-section".*?</section>', source)
+          work = one(r'<section class="section work-section".*?</section>', source)
+          outcome = one(r'<div class="outcome">.*?</p></div>', overview.group()).group()
+          included = one(r'<div class="card"><h3>What’s included</h3>.*?</ul></div>', overview.group()).group()
+          new_overview = '<section class="section" id="health-check-overview"><div class="wrap cols"><div>' + outcome + '</div>' + included + '</div></section>'
+          result = source[:audience.start()] + source[audience.end():]
+          result = result[:overview.start()] + result[overview.end():]
+          marker = '<section class="report-section"'
+          assert result.count(marker) == 1
+          result = result.replace(marker, new_overview + '\n' + audience.group() + '\n' + marker, 1)
+          assert '<h2>What is it?</h2>' not in result
+          intro = 'A plain-English review of the key things that affect trust and conversion: speed, mobile experience, design, clarity, trust signals and calls-to-action.'
+          assert result.count(intro) == 1
+          assert result.count(outcome) == 1 and result.count(included) == 1
+          assert result.count(audience.group()) == 1
+          assert report.group() in result and work.group() in result
+          assert result.index('Request Your Free Health Check') < result.index('id="health-check-overview"') < result.index('id="who-is-it-for"') < result.index('From website friction to clear priorities') < result.index('id="how-we-work"')
+          class Check(HTMLParser):
+              def __init__(self):
+                  super().__init__(); self.sections = 0; self.ids = []
+              def handle_starttag(self, tag, attrs):
+                  if tag == 'section': self.sections += 1
+                  self.ids.extend(value for key, value in attrs if key == 'id')
+              def handle_endtag(self, tag):
+                  if tag == 'section': self.sections -= 1
+                  assert self.sections >= 0
+          check = Check(); check.feed(result)
+          assert check.sections == 0 and len(check.ids) == len(set(check.ids))
+          path.write_bytes(result.encode('utf-8'))
+      - name: Commit only the checked page and verify remote main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git diff --check
+          test "$(git diff --name-only)" = services/website-health-check.html
+          git add -- services/website-health-check.html
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Move outcome, inclusions and audience above health-check report; remove duplicate introduction'
+          git push origin HEAD:main
+          expected=$(git rev-parse HEAD)
+          actual=$(gh api repos/${{ github.repository }}/git/ref/heads/main --jq '.object.sha')
+          test "$expected" = "$actual"
+          echo "Remote page commit confirmed: $expected" >> "$GITHUB_STEP_SUMMARY"
+          echo "DEPLOY_COMMIT=$expected" >> "$GITHUB_ENV"
+      - name: Request Pages rebuild
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method POST repos/${{ github.repository }}/pages/builds
+      - name: Verify public page ordering
+        shell: python
+        run: |
+          import os, time
+          from urllib.request import urlopen
+          url = 'https://jwgrowthanddesign.com/services/website-health-check.html?revision=' + os.environ['DEPLOY_COMMIT']
+          for attempt in range(30):
+              try:
+                  with urlopen(url, timeout=20) as response:
+                      text = response.read().decode('utf-8')
+                  assert '<h2>What is it?</h2>' not in text
+                  assert text.index('id="health-check-overview"') < text.index('id="who-is-it-for"') < text.index('From website friction to clear priorities')
+                  with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+                      summary.write('Public page content order verified.\n')
+                  break
+              except Exception as error:
+                  print('Public verification pending:', error)
+                  if attempt == 29: raise
+                  time.sleep(10)
