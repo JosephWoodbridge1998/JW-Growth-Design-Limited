@@ -1,0 +1,173 @@
+name: Repair and verify Why JW Earth redesign
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/repair-why-jw-earth.yml']
+permissions:
+  contents: write
+  actions: read
+  checks: read
+  pages: write
+concurrency:
+  group: why-jw-earth-redesign
+  cancel-in-progress: false
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Retrieve original failure diagnostics
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p repair-diagnostics
+          gh api repos/${{ github.repository }}/actions/runs/42491044282/jobs > repair-diagnostics/original-jobs.json || true
+          gh run view 42491044282 --repo "${{ github.repository }}" --log-failed > repair-diagnostics/original-failure.log 2>&1 || true
+          cat repair-diagnostics/original-failure.log
+      - name: Install rendering and page tools
+        run: python -m pip install beautifulsoup4 pillow numpy pyyaml
+      - name: Render Earth from verified texture and apply approved page transformation
+        shell: python
+        run: |
+          from pathlib import Path
+          from urllib.request import Request, urlopen
+          from io import BytesIO
+          from PIL import Image
+          import numpy as np
+          import yaml, time
+          diagnostics = Path('repair-diagnostics')
+          diagnostics.mkdir(exist_ok=True)
+          current = Path('why-jw-growth-design.html').read_text()
+          destination = Path('images/why-jw-earth.jpg')
+          if 'id="why-earth-photo-style"' in current and destination.is_file():
+              print('Approved redesign already present; checking existing output.')
+          else:
+              urls = [
+                  'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_atmos_2048.jpg',
+                  'https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/examples/textures/planets/earth_atmos_2048.jpg'
+              ]
+              texture = None
+              attempts = []
+              for url in urls:
+                  for attempt in range(3):
+                      try:
+                          request = Request(url, headers={'User-Agent':'JW-Website-Asset-Repair/1.0'})
+                          with urlopen(request, timeout=15) as response:
+                              raw = response.read(8000000)
+                          loaded = Image.open(BytesIO(raw))
+                          loaded.load()
+                          assert loaded.width >= 1024 and 1.8 < loaded.width/loaded.height < 2.2
+                          texture = np.asarray(loaded.convert('RGB'), dtype=np.float64)
+                          attempts.append('Downloaded and validated: '+url)
+                          break
+                      except Exception as error:
+                          attempts.append(url+' attempt '+str(attempt+1)+': '+str(error))
+                          time.sleep(2)
+                  if texture is not None: break
+              (diagnostics/'asset-download.log').write_text('\n'.join(attempts))
+              assert texture is not None, 'All Earth texture download attempts failed; page left unchanged'
+              size = 720
+              yy, xx = np.mgrid[0:size,0:size]
+              x = (xx-(size-1)/2)/(size/2)
+              y = -((yy-(size-1)/2)/(size/2))
+              rho = np.sqrt(x*x+y*y)
+              mask = rho <= 1
+              r = np.clip(rho, 1e-8, 1)
+              c = np.arcsin(np.clip(rho,0,1))
+              lat0, lon0 = np.deg2rad(16), np.deg2rad(12)
+              latitude = np.arcsin(np.clip(np.cos(c)*np.sin(lat0)+y*np.sin(c)*np.cos(lat0)/r,-1,1))
+              longitude = lon0+np.arctan2(x*np.sin(c),r*np.cos(lat0)*np.cos(c)-y*np.sin(lat0)*np.sin(c))
+              height,width,_ = texture.shape
+              u = ((longitude/(2*np.pi)+.5)%1)*(width-1)
+              v = np.clip(.5-latitude/np.pi,0,1)*(height-1)
+              colour = texture[np.rint(v).astype(int),np.rint(u).astype(int)]
+              z = np.sqrt(np.clip(1-x*x-y*y,0,1))
+              light = np.clip((-.45*x+.55*y+z)/np.sqrt(1+.45**2+.55**2),0,1)
+              colour = np.clip(colour*(.58+.42*light[...,None]),0,255).astype('uint8')
+              output = np.empty((size,size,3),dtype='uint8')
+              output[:] = [7,27,46]
+              output[mask] = colour[mask]
+              destination.parent.mkdir(parents=True,exist_ok=True)
+              Image.fromarray(output).save(destination,quality=90,optimize=True)
+              workflow = yaml.safe_load(Path('.github/workflows/why-jw-earth-redesign.yml').read_text())
+              steps = workflow['jobs']['redesign']['steps']
+              found = [s['run'] for s in steps if s.get('name') == 'Prepare photographic Earth and checked page edits']
+              assert len(found) == 1
+              code = found[0]
+              start = code.index('asset_url = ')
+              end = code.index('path.write_text(result)',start)
+              code = code[:start] + "assert Path('images/why-jw-earth.jpg').is_file()\n" + code[end:]
+              code = code.replace("alt='NASA Blue Marble Earth'", "alt='Earth viewed from space'")
+              exec(compile(code,'approved-why-jw-transform','exec'),{})
+          from bs4 import BeautifulSoup
+          page = BeautifulSoup(Path('why-jw-growth-design.html').read_text(),'html.parser')
+          assert page.select_one('#why-earth-photo-style')
+          assert page.select_one('.earth-photo img')['src']=='/images/why-jw-earth.jpg'
+          assert not page.select('section[aria-labelledby=journeyTitle], .globe svg, .globe-note, .sources')
+          assert len(page.select('.insight-card'))==len(page.select('.source-link'))==3
+          with Image.open(destination) as image:
+              assert image.size==(720,720)
+          script = [s for s in page.find_all('script') if not s.get('src') and 'const motion=matchMedia' in (s.string or '')]
+          assert len(script)==1
+          Path('/tmp/why-jw-controller.js').write_text(script[0].string)
+          (diagnostics/'page-checks.txt').write_text('Earth image validated; journey removed; three research cards and source links preserved; page controller extracted for syntax check.\n')
+      - name: Check syntax and commit only page and Earth image
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          node --check /tmp/why-jw-controller.js
+          git diff --check
+          test -z "$(git diff --name-only -- .github/workflows)"
+          git add -- why-jw-growth-design.html images/why-jw-earth.jpg
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'Repair Earth asset download and publish approved Why JW redesign'
+            git push origin HEAD:main
+          fi
+          expected=$(git rev-parse HEAD)
+          actual=$(gh api repos/${{ github.repository }}/git/ref/heads/main --jq '.object.sha')
+          test "$expected" = "$actual"
+          echo "DEPLOY_COMMIT=$expected" >> "$GITHUB_ENV"
+          echo "Page and image confirmed on remote main: $expected" >> "$GITHUB_STEP_SUMMARY"
+      - name: Record Pages configuration and request rebuild
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api repos/${{ github.repository }}/pages > repair-diagnostics/pages-config.json
+          gh api --method POST repos/${{ github.repository }}/pages/builds > repair-diagnostics/pages-build-request.json
+      - name: Verify public page and image separately from commit
+        shell: python
+        run: |
+          import os,time
+          from urllib.request import urlopen
+          from bs4 import BeautifulSoup
+          from pathlib import Path
+          for attempt in range(30):
+              try:
+                  with urlopen('https://jwgrowthanddesign.com/why-jw-growth-design.html?revision='+os.environ['DEPLOY_COMMIT'],timeout=15) as response:
+                      page=BeautifulSoup(response.read().decode('utf-8'),'html.parser')
+                  assert page.select_one('#why-earth-photo-style')
+                  assert not page.select('section[aria-labelledby=journeyTitle]')
+                  with urlopen('https://jwgrowthanddesign.com/images/why-jw-earth.jpg?revision='+os.environ['DEPLOY_COMMIT'],timeout=15) as response:
+                      assert response.read(2)==b'\xff\xd8'
+                  Path('repair-diagnostics/public-verification.txt').write_text('Public Why JW redesign and JPEG verified.\n')
+                  with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as summary:
+                      summary.write('Public Why JW redesign and Earth image verified.\n')
+                  break
+              except Exception as error:
+                  print('Public verification pending:',error)
+                  if attempt==29: raise
+                  time.sleep(8)
+      - name: Preserve diagnostics even if repair fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: why-jw-earth-repair-diagnostics
+          path: repair-diagnostics/
