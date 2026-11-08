@@ -1,0 +1,126 @@
+name: Apply reversible charcoal-neon theme trial
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/apply-charcoal-theme-trial.yml']
+permissions:
+  contents: write
+  pages: write
+concurrency:
+  group: jw-theme-trial
+  cancel-in-progress: false
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Read approved theme from immutable review commit
+        run: |
+          set -euo pipefail
+          git fetch origin d90c52f11a6651ce7bce8c6c3f3c3940874c5443 --depth=1
+          git show d90c52f11a6651ce7bce8c6c3f3c3940874c5443:jw-charcoal-neon-preview.css > /tmp/jw-approved-charcoal.css
+      - name: Preserve light theme and add colour overlay without changing pages
+        shell: python
+        run: |
+          from pathlib import Path
+          import subprocess,json,hashlib
+          shared=Path('jw-light-theme.css')
+          original=shared.read_bytes()
+          marker=b'/* JW CHARCOAL TRIAL BEGIN */'
+          assert marker not in original,'A charcoal trial is already active; refusing to duplicate it'
+          assert hashlib.sha1(b'blob '+str(len(original)).encode()+b'\0'+original).hexdigest()=='32f9bb99e434ab6694f0b031ea7c7d939779e450','Shared light stylesheet changed since approval; refusing to overwrite'
+          overlay=Path('/tmp/jw-approved-charcoal.css').read_bytes()
+          assert b'--black:#10151b' in overlay and b'--neon:#00d9ff' in overlay
+          backup=Path('theme-backups/light-theme-before-charcoal-20261108.css')
+          assert not backup.exists(),'Backup already exists; no overwrite performed'
+          backup.parent.mkdir(parents=True,exist_ok=True)
+          backup.write_bytes(original)
+          combined=original+b'\n'+marker+b'\n'+overlay+b'\n/* JW CHARCOAL TRIAL END */\n'
+          shared.write_bytes(combined)
+          assert shared.read_bytes().split(marker)[0].rstrip()==original.rstrip()
+          record={'baseline_main':'f132b5a9856a0fce89948d3ab0b1694aca2f5edb','pre_activation_commit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'review_commit':'d90c52f11a6651ce7bce8c6c3f3c3940874c5443','stylesheet':'jw-light-theme.css','backup':str(backup),'rollback':'Revert the separate activation commit produced by this workflow, not the full repository baseline. Alternatively restore the shared stylesheet from the recorded backup in a separately approved commit.','scope':'Shared JW styling only; page HTML, business content, pricing, integrations and embedded website documents are unchanged.'}
+          Path('theme-backups/charcoal-trial-record.json').write_text(json.dumps(record,indent=2)+'\n')
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install browser tools without system package updates
+        run: python -m pip install playwright==1.48.0
+      - name: Check desktop and mobile theme rendering
+        shell: python
+        run: |
+          from http.server import ThreadingHTTPServer,SimpleHTTPRequestHandler
+          from pathlib import Path
+          from playwright.sync_api import sync_playwright,expect
+          import threading,shutil,subprocess,sys,traceback
+          Path('theme-checks').mkdir(exist_ok=True)
+          chrome=shutil.which('google-chrome') or shutil.which('google-chrome-stable') or shutil.which('chromium')
+          if not chrome: subprocess.run([sys.executable,'-m','playwright','install','chromium'],check=True)
+          server=ThreadingHTTPServer(('127.0.0.1',8765),SimpleHTTPRequestHandler)
+          threading.Thread(target=server.serve_forever,daemon=True).start()
+          try:
+              with sync_playwright() as p:
+                  options={'headless':True}
+                  if chrome: options['executable_path']=chrome
+                  browser=p.chromium.launch(**options)
+                  for width in [1280,390]:
+                      for route in ['index.html','services/website-design.html','services/website-health-check.html','why-jw-growth-design.html']:
+                          page=browser.new_page(viewport={'width':width,'height':1000},reduced_motion='reduce')
+                          page.goto('http://127.0.0.1:8765/'+route,wait_until='domcontentloaded')
+                          expect(page.locator('h1')).to_be_visible()
+                          assert page.locator('body').evaluate("e=>getComputedStyle(e).backgroundColor")=='rgb(16, 21, 27)'
+                          assert page.locator('body').evaluate("e=>getComputedStyle(e).color")=='rgb(241, 245, 249)'
+                          page.screenshot(path='theme-checks/'+route.replace('/','-')+'-'+str(width)+'.png')
+                          page.close()
+                  browser.close()
+          except Exception:
+              Path('theme-checks/error.txt').write_text(traceback.format_exc()); raise
+          finally: server.shutdown()
+      - name: Commit theme activation separately and record rollback reference
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git diff --check
+          test "$(git diff --name-only)" = jw-light-theme.css
+          git add -- jw-light-theme.css theme-backups/light-theme-before-charcoal-20261108.css theme-backups/charcoal-trial-record.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Activate reversible charcoal and neon-blue shared theme trial'
+          git push origin HEAD:main
+          activation=$(git rev-parse HEAD)
+          remote=$(gh api repos/${{ github.repository }}/git/ref/heads/main --jq '.object.sha')
+          test "$activation" = "$remote"
+          echo "THEME_ACTIVATION=$activation" >> "$GITHUB_ENV"
+          echo "Theme activation commit: $activation" >> "$GITHUB_STEP_SUMMARY"
+          echo "To undo this trial, revert $activation; do not reset main to an older site revision." >> "$GITHUB_STEP_SUMMARY"
+      - name: Request Pages publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method POST repos/${{ github.repository }}/pages/builds
+      - name: Verify published theme stylesheet
+        shell: python
+        run: |
+          from urllib.request import urlopen
+          from pathlib import Path
+          import os,time
+          for attempt in range(25):
+              try:
+                  with urlopen('https://jwgrowthanddesign.com/jw-light-theme.css?theme='+os.environ['THEME_ACTIVATION'],timeout=15) as response: css=response.read().decode('utf-8')
+                  assert '/* JW CHARCOAL TRIAL BEGIN */' in css and '--black:#10151b' in css
+                  with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as summary: summary.write('Published charcoal theme stylesheet verified.\n')
+                  break
+              except Exception as error:
+                  Path('theme-checks/public-error.txt').write_text(str(error))
+                  if attempt==24: raise
+                  time.sleep(8)
+      - name: Preserve browser screenshots and test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: charcoal-theme-trial-checks
+          path: theme-checks/
