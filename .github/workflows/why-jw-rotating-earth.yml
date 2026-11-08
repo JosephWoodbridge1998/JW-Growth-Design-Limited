@@ -6,6 +6,7 @@ on:
     paths: ['.github/workflows/why-jw-rotating-earth.yml', 'jw-why-earth.js']
 permissions:
   contents: write
+  actions: read
   pages: write
 concurrency:
   group: why-jw-earth-redesign
@@ -13,16 +14,37 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
-      - name: Install page, image and browser tools
+      - name: Preserve previous run diagnostics
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          python -m pip install beautifulsoup4 pillow playwright
-          python -m playwright install --with-deps chromium
-      - name: Prepare local Earth texture and apply scoped page changes
+          mkdir -p earth-checks
+          gh api repos/${{ github.repository }}/actions/runs/42493706824/jobs > earth-checks/previous-jobs.json || true
+          gh run view 42493706824 --repo "${{ github.repository }}" --log-failed > earth-checks/previous-failure.log 2>&1 || true
+          cat earth-checks/previous-failure.log
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Python tools without system package changes
+        run: python -m pip install beautifulsoup4==4.12.3 pillow==11.0.0 playwright==1.48.0
+      - name: Locate browser already installed on runner
+        shell: python
+        run: |
+          import os,shutil,subprocess,sys
+          from pathlib import Path
+          chrome=shutil.which('google-chrome') or shutil.which('google-chrome-stable') or shutil.which('chromium')
+          if chrome:
+              with open(os.environ['GITHUB_ENV'],'a') as env: env.write('JW_CHROME='+chrome+'\n')
+              Path('earth-checks/browser.txt').write_text(chrome+'\n')
+          else:
+              subprocess.run([sys.executable,'-m','playwright','install','chromium'],check=True)
+              Path('earth-checks/browser.txt').write_text('Playwright Chromium fallback\n')
+      - name: Prepare validated Earth texture and scoped page changes
         shell: python
         run: |
           from pathlib import Path
@@ -30,89 +52,103 @@ jobs:
           from io import BytesIO
           from PIL import Image
           from bs4 import BeautifulSoup
-          import time
-          texture=Path('images/why-jw-earth-texture.jpg')
-          if not texture.is_file():
-              urls=['https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_atmos_2048.jpg','https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/examples/textures/planets/earth_atmos_2048.jpg']
-              loaded=None
-              for url in urls:
-                  for attempt in range(3):
-                      try:
-                          with urlopen(Request(url,headers={'User-Agent':'JW-Website-Assets/1.0'}),timeout=15) as response: raw=response.read(8000000)
-                          image=Image.open(BytesIO(raw)); image.load()
-                          assert image.width>=1024 and 1.8<image.width/image.height<2.2
-                          loaded=image.convert('RGB'); break
-                      except Exception as error:
-                          print(url,attempt+1,error); time.sleep(2)
-                  if loaded is not None: break
-              assert loaded is not None,'Earth texture unavailable; page not changed'
-              loaded.resize((1024,512),Image.Resampling.LANCZOS).save(texture,quality=92,optimize=True)
-          path=Path('why-jw-growth-design.html')
-          soup=BeautifulSoup(path.read_text(),'html.parser')
-          assert soup.select_one('.earth-photo img'),'Expected photographic Earth fallback'
-          reviews=soup.select('[data-count=reviews]')
-          assert len(reviews)==1
-          card=reviews[0].find_parent('article')
-          reviews[0].string='89%'
-          card.select_one('.sr-only').string='Eighty-nine percent'
-          card.select_one('h3').string='UK adults who use online reviews when researching a product or service'
-          link=card.select_one('.source-link')
-          link['href']='https://www.gov.uk/government/news/fake-and-misleading-reviews-5-businesses-under-cma-investigation'
-          link.string='Which? · cited by CMA, 2026 ↗'
-          process=soup.select('section[aria-labelledby=processTitle]')
-          assert len(process)<=1
-          for section in process: section.decompose()
-          existing=soup.find(id='jw-why-earth-loader')
-          if existing: existing.decompose()
-          script=soup.new_tag('script',id='jw-why-earth-loader',src='/jw-why-earth.js?v=20261108-1500',defer='')
-          soup.body.append(script)
-          assert '97%' not in card.get_text() and 'US consumers' not in card.get_text()
-          assert not soup.select('section[aria-labelledby=processTitle]')
-          assert len(soup.select('.insight-card'))==3
-          path.write_text(str(soup))
-      - name: Check script syntax
+          import time,traceback
+          try:
+              texture=Path('images/why-jw-earth-texture.jpg')
+              if not texture.is_file():
+                  urls=['https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_atmos_2048.jpg','https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/examples/textures/planets/earth_atmos_2048.jpg']
+                  loaded=None
+                  attempts=[]
+                  for url in urls:
+                      for attempt in range(3):
+                          try:
+                              with urlopen(Request(url,headers={'User-Agent':'JW-Website-Assets/1.0'}),timeout=15) as response: raw=response.read(8000000)
+                              image=Image.open(BytesIO(raw)); image.load()
+                              assert image.width>=1024 and 1.8<image.width/image.height<2.2
+                              loaded=image.convert('RGB'); break
+                          except Exception as error:
+                              attempts.append(str(error)); time.sleep(2)
+                      if loaded is not None: break
+                  Path('earth-checks/texture-download.txt').write_text('\n'.join(attempts))
+                  assert loaded is not None,'Earth texture download failed; no page commit made'
+                  texture.parent.mkdir(parents=True,exist_ok=True)
+                  loaded.resize((1024,512),Image.Resampling.LANCZOS).save(texture,quality=92,optimize=True)
+              with Image.open(texture) as image: assert image.size==(1024,512)
+              path=Path('why-jw-growth-design.html')
+              soup=BeautifulSoup(path.read_text(),'html.parser')
+              assert soup.select_one('.earth-photo img'),'Photographic Earth fallback missing'
+              reviews=soup.select('[data-count=reviews]')
+              assert len(reviews)==1
+              card=reviews[0].find_parent('article')
+              reviews[0].string='89%'
+              card.select_one('.sr-only').string='Eighty-nine percent'
+              card.select_one('h3').string='UK adults who use online reviews when researching a product or service'
+              link=card.select_one('.source-link')
+              link['href']='https://www.gov.uk/government/news/fake-and-misleading-reviews-5-businesses-under-cma-investigation'
+              link.string='Which? · cited by CMA, 2026 ↗'
+              for section in soup.select('section[aria-labelledby=processTitle]'): section.decompose()
+              for script in soup.select('#jw-why-earth-loader'): script.decompose()
+              soup.body.append(soup.new_tag('script',id='jw-why-earth-loader',src='/jw-why-earth.js?v=20261108-1500',defer=''))
+              assert '97%' not in card.get_text() and 'US consumers' not in card.get_text()
+              assert not soup.select('section[aria-labelledby=processTitle]')
+              assert len(soup.select('.insight-card'))==3
+              path.write_text(str(soup))
+          except Exception:
+              Path('earth-checks/preparation-error.txt').write_text(traceback.format_exc())
+              raise
+      - name: Check JavaScript syntax
         run: node --check jw-why-earth.js
-      - name: Browser-check rotation, pause, UK statistic and mobile fit
+      - name: Browser-check actual rotation, pause, reduced motion and mobile fit
         shell: python
         run: |
           from http.server import ThreadingHTTPServer,SimpleHTTPRequestHandler
           from pathlib import Path
-          from playwright.sync_api import sync_playwright
-          import threading
-          Path('earth-checks').mkdir(exist_ok=True)
+          from playwright.sync_api import sync_playwright,expect
+          import threading,os,traceback,json
           server=ThreadingHTTPServer(('127.0.0.1',8765),SimpleHTTPRequestHandler)
           threading.Thread(target=server.serve_forever,daemon=True).start()
+          errors=[]
+          page=None
           try:
               with sync_playwright() as p:
-                  browser=p.chromium.launch()
+                  options={'headless':True}
+                  if os.environ.get('JW_CHROME'): options['executable_path']=os.environ['JW_CHROME']
+                  browser=p.chromium.launch(**options)
                   for width in [1280,390]:
                       page=browser.new_page(viewport={'width':width,'height':1000},reduced_motion='no-preference')
+                      page.on('pageerror',lambda error:errors.append(str(error)))
+                      page.on('console',lambda message:errors.append(message.text) if message.type=='error' else None)
+                      page.bring_to_front()
                       page.goto('http://127.0.0.1:8765/why-jw-growth-design.html',wait_until='domcontentloaded')
                       globe=page.locator('.earth-photo')
+                      expect(globe).to_be_visible()
                       globe.scroll_into_view_if_needed()
-                      page.wait_for_function("document.querySelector('.earth-photo').dataset.spinningEarth==='ready'")
+                      page.wait_for_function("document.querySelector('.earth-photo').dataset.spinningEarth==='ready'",timeout=15000)
                       before=globe.get_attribute('data-longitude')
-                      page.wait_for_timeout(300)
-                      assert globe.get_attribute('data-longitude')!=before,'Globe did not rotate'
+                      page.wait_for_function("before=>document.querySelector('.earth-photo').dataset.longitude!==before",arg=before,timeout=10000)
                       page.locator('#motionToggle').click()
-                      page.wait_for_timeout(100)
+                      page.wait_for_function("document.body.classList.contains('motion-paused')")
                       held=globe.get_attribute('data-longitude')
-                      page.wait_for_timeout(250)
-                      assert globe.get_attribute('data-longitude')==held,'Pause did not stop rotation'
-                      assert page.locator('[data-count=reviews]').inner_text()=='89%'
-                      assert page.locator('#processTitle').count()==0
+                      page.wait_for_timeout(400)
+                      assert globe.get_attribute('data-longitude')==held,'Rotation continued after pause'
+                      expect(page.locator('[data-count=reviews]')).to_have_text('89%')
+                      expect(page.locator('#processTitle')).to_have_count(0)
                       assert globe.evaluate('(e)=>e.scrollWidth<=e.clientWidth+1')
                       globe.screenshot(path='earth-checks/earth-'+str(width)+'.png')
                       page.emulate_media(reduced_motion='reduce')
-                      assert page.locator('#motionToggle').is_disabled()
-                      page.close()
+                      expect(page.locator('#motionToggle')).to_be_disabled(timeout=5000)
+                      page.close(); page=None
                   browser.close()
-          finally: server.shutdown()
-      - uses: actions/upload-artifact@v4
-        with:
-          name: why-jw-rotating-earth-browser-checks
-          path: earth-checks/
-      - name: Commit checked page and local texture only
+          except Exception:
+              Path('earth-checks/browser-error.txt').write_text(traceback.format_exc())
+              if page:
+                  try: page.screenshot(path='earth-checks/failure.png',full_page=True)
+                  except Exception: pass
+              raise
+          finally:
+              Path('earth-checks/browser-console.json').write_text(json.dumps(errors,indent=2))
+              server.shutdown()
+      - name: Commit verified page and texture only
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -123,25 +159,28 @@ jobs:
           if ! git diff --cached --quiet; then
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git commit -m 'Publish rotating Earth, UK 89 percent review statistic and remove repeated process'
+            git commit -m 'Publish browser-checked rotating Earth and UK statistic; remove duplicate process'
             git push origin HEAD:main
           fi
           expected=$(git rev-parse HEAD)
           actual=$(gh api repos/${{ github.repository }}/git/ref/heads/main --jq '.object.sha')
           test "$expected" = "$actual"
           echo "DEPLOY_COMMIT=$expected" >> "$GITHUB_ENV"
-          echo "Checked page and texture committed: $expected" >> "$GITHUB_STEP_SUMMARY"
+          echo "Browser checks passed. Remote page commit: $expected" >> "$GITHUB_STEP_SUMMARY"
       - name: Request Pages rebuild
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh api --method POST repos/${{ github.repository }}/pages/builds
-      - name: Verify public page
+        run: |
+          gh api repos/${{ github.repository }}/pages > earth-checks/pages-settings.json
+          gh api --method POST repos/${{ github.repository }}/pages/builds > earth-checks/pages-build-request.json
+      - name: Verify public page and assets
         shell: python
         run: |
-          import os,time
+          import os,time,traceback
           from urllib.request import urlopen
           from bs4 import BeautifulSoup
-          for attempt in range(30):
+          from pathlib import Path
+          for attempt in range(25):
               try:
                   with urlopen('https://jwgrowthanddesign.com/why-jw-growth-design.html?revision='+os.environ['DEPLOY_COMMIT'],timeout=15) as response:
                       soup=BeautifulSoup(response.read().decode('utf-8'),'html.parser')
@@ -149,9 +188,16 @@ jobs:
                   assert soup.select_one('[data-count=reviews]').get_text()=='89%'
                   assert not soup.select('section[aria-labelledby=processTitle]')
                   with urlopen('https://jwgrowthanddesign.com/images/why-jw-earth-texture.jpg',timeout=15) as response: assert response.read(2)==b'\xff\xd8'
-                  with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as summary: summary.write('Public page, UK statistic and local Earth texture verified.\n')
+                  with urlopen('https://jwgrowthanddesign.com/jw-why-earth.js?v=20261108-1500',timeout=15) as response: assert 'spinningEarth' in response.read().decode('utf-8')
+                  with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as summary: summary.write('Public page, renderer and texture verified.\n')
                   break
-              except Exception as error:
-                  print('Public verification pending:',error)
-                  if attempt==29: raise
+              except Exception:
+                  Path('earth-checks/public-verification-error.txt').write_text(traceback.format_exc())
+                  if attempt==24: raise
                   time.sleep(8)
+      - name: Save diagnostics and screenshots even after a failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: why-jw-rotating-earth-diagnostics
+          path: earth-checks/
