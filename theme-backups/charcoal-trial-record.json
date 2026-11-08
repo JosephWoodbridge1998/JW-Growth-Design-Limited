@@ -1,0 +1,11 @@
+{
+  "baseline_main": "f132b5a9856a0fce89948d3ab0b1694aca2f5edb",
+  "pre_activation_commit": "18136dfae4d22b2a291f1686155ea2d10d25928b",
+  "review_commit": "d90c52f11a6651ce7bce8c6c3f3c3940874c5443",
+  "original_stylesheet_blob": "32f9bb99e434ab6694f0b031ea7c7d939779e450",
+  "stylesheet": "jw-light-theme.css",
+  "backup": "theme-backups/light-theme-before-charcoal-20261108.css",
+  "method": "Direct stylesheet-only activation, bypassing the failed activation workflow. The preserved light stylesheet is imported before the approved colour overlay.",
+  "rollback": "Revert the commit introducing this record, or restore jw-light-theme.css from the recorded baseline in a separately approved commit. Do not reset the full site history.",
+  "scope": "Shared JW theme only. No HTML, pricing, content, forms, integration scripts, embedded client websites or standalone concept pages changed."
+}
