@@ -2,3 +2,6 @@
 
 /* Keep the homepage film wrapper transparent against the charcoal hero. */
 .device-hero #jw-real-portfolio-v4,.device-hero #jw-real-portfolio-v4>iframe{background:transparent!important;border:0!important;box-shadow:none!important}.device-hero #jw-real-portfolio-v4>iframe{color-scheme:dark}
+
+/* Homepage service strip: scoped overrides retain existing layout and content. */
+#jw-services-orbit-v6.jw-service-strip{color:#f1f5f9}#jw-services-orbit-v6 .jw-service-row:before{background:#355269}#jw-services-orbit-v6 .jw-service-card{background:#1a2633!important;border-color:#355269!important;color:#f1f5f9;box-shadow:0 7px 22px rgba(0,0,0,.12)}#jw-services-orbit-v6 .jw-service-top svg,#jw-services-orbit-v6 .jw-service-card h3{color:#4bddff!important}#jw-services-orbit-v6 .jw-service-card p{color:#b1bfce!important}
