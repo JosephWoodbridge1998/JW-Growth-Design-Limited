@@ -1,0 +1,157 @@
+name: Publish rotating Earth and UK review statistic
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/why-jw-rotating-earth.yml', 'jw-why-earth.js']
+permissions:
+  contents: write
+  pages: write
+concurrency:
+  group: why-jw-earth-redesign
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Install page, image and browser tools
+        run: |
+          python -m pip install beautifulsoup4 pillow playwright
+          python -m playwright install --with-deps chromium
+      - name: Prepare local Earth texture and apply scoped page changes
+        shell: python
+        run: |
+          from pathlib import Path
+          from urllib.request import Request,urlopen
+          from io import BytesIO
+          from PIL import Image
+          from bs4 import BeautifulSoup
+          import time
+          texture=Path('images/why-jw-earth-texture.jpg')
+          if not texture.is_file():
+              urls=['https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_atmos_2048.jpg','https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/examples/textures/planets/earth_atmos_2048.jpg']
+              loaded=None
+              for url in urls:
+                  for attempt in range(3):
+                      try:
+                          with urlopen(Request(url,headers={'User-Agent':'JW-Website-Assets/1.0'}),timeout=15) as response: raw=response.read(8000000)
+                          image=Image.open(BytesIO(raw)); image.load()
+                          assert image.width>=1024 and 1.8<image.width/image.height<2.2
+                          loaded=image.convert('RGB'); break
+                      except Exception as error:
+                          print(url,attempt+1,error); time.sleep(2)
+                  if loaded is not None: break
+              assert loaded is not None,'Earth texture unavailable; page not changed'
+              loaded.resize((1024,512),Image.Resampling.LANCZOS).save(texture,quality=92,optimize=True)
+          path=Path('why-jw-growth-design.html')
+          soup=BeautifulSoup(path.read_text(),'html.parser')
+          assert soup.select_one('.earth-photo img'),'Expected photographic Earth fallback'
+          reviews=soup.select('[data-count=reviews]')
+          assert len(reviews)==1
+          card=reviews[0].find_parent('article')
+          reviews[0].string='89%'
+          card.select_one('.sr-only').string='Eighty-nine percent'
+          card.select_one('h3').string='UK adults who use online reviews when researching a product or service'
+          link=card.select_one('.source-link')
+          link['href']='https://www.gov.uk/government/news/fake-and-misleading-reviews-5-businesses-under-cma-investigation'
+          link.string='Which? · cited by CMA, 2026 ↗'
+          process=soup.select('section[aria-labelledby=processTitle]')
+          assert len(process)<=1
+          for section in process: section.decompose()
+          existing=soup.find(id='jw-why-earth-loader')
+          if existing: existing.decompose()
+          script=soup.new_tag('script',id='jw-why-earth-loader',src='/jw-why-earth.js?v=20261108-1500',defer='')
+          soup.body.append(script)
+          assert '97%' not in card.get_text() and 'US consumers' not in card.get_text()
+          assert not soup.select('section[aria-labelledby=processTitle]')
+          assert len(soup.select('.insight-card'))==3
+          path.write_text(str(soup))
+      - name: Check script syntax
+        run: node --check jw-why-earth.js
+      - name: Browser-check rotation, pause, UK statistic and mobile fit
+        shell: python
+        run: |
+          from http.server import ThreadingHTTPServer,SimpleHTTPRequestHandler
+          from pathlib import Path
+          from playwright.sync_api import sync_playwright
+          import threading
+          Path('earth-checks').mkdir(exist_ok=True)
+          server=ThreadingHTTPServer(('127.0.0.1',8765),SimpleHTTPRequestHandler)
+          threading.Thread(target=server.serve_forever,daemon=True).start()
+          try:
+              with sync_playwright() as p:
+                  browser=p.chromium.launch()
+                  for width in [1280,390]:
+                      page=browser.new_page(viewport={'width':width,'height':1000},reduced_motion='no-preference')
+                      page.goto('http://127.0.0.1:8765/why-jw-growth-design.html',wait_until='domcontentloaded')
+                      globe=page.locator('.earth-photo')
+                      globe.scroll_into_view_if_needed()
+                      page.wait_for_function("document.querySelector('.earth-photo').dataset.spinningEarth==='ready'")
+                      before=globe.get_attribute('data-longitude')
+                      page.wait_for_timeout(300)
+                      assert globe.get_attribute('data-longitude')!=before,'Globe did not rotate'
+                      page.locator('#motionToggle').click()
+                      page.wait_for_timeout(100)
+                      held=globe.get_attribute('data-longitude')
+                      page.wait_for_timeout(250)
+                      assert globe.get_attribute('data-longitude')==held,'Pause did not stop rotation'
+                      assert page.locator('[data-count=reviews]').inner_text()=='89%'
+                      assert page.locator('#processTitle').count()==0
+                      assert globe.evaluate('(e)=>e.scrollWidth<=e.clientWidth+1')
+                      globe.screenshot(path='earth-checks/earth-'+str(width)+'.png')
+                      page.emulate_media(reduced_motion='reduce')
+                      assert page.locator('#motionToggle').is_disabled()
+                      page.close()
+                  browser.close()
+          finally: server.shutdown()
+      - uses: actions/upload-artifact@v4
+        with:
+          name: why-jw-rotating-earth-browser-checks
+          path: earth-checks/
+      - name: Commit checked page and local texture only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git diff --check
+          test -z "$(git diff --name-only -- .github/workflows)"
+          git add -- why-jw-growth-design.html images/why-jw-earth-texture.jpg
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'Publish rotating Earth, UK 89 percent review statistic and remove repeated process'
+            git push origin HEAD:main
+          fi
+          expected=$(git rev-parse HEAD)
+          actual=$(gh api repos/${{ github.repository }}/git/ref/heads/main --jq '.object.sha')
+          test "$expected" = "$actual"
+          echo "DEPLOY_COMMIT=$expected" >> "$GITHUB_ENV"
+          echo "Checked page and texture committed: $expected" >> "$GITHUB_STEP_SUMMARY"
+      - name: Request Pages rebuild
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method POST repos/${{ github.repository }}/pages/builds
+      - name: Verify public page
+        shell: python
+        run: |
+          import os,time
+          from urllib.request import urlopen
+          from bs4 import BeautifulSoup
+          for attempt in range(30):
+              try:
+                  with urlopen('https://jwgrowthanddesign.com/why-jw-growth-design.html?revision='+os.environ['DEPLOY_COMMIT'],timeout=15) as response:
+                      soup=BeautifulSoup(response.read().decode('utf-8'),'html.parser')
+                  assert soup.select_one('#jw-why-earth-loader')
+                  assert soup.select_one('[data-count=reviews]').get_text()=='89%'
+                  assert not soup.select('section[aria-labelledby=processTitle]')
+                  with urlopen('https://jwgrowthanddesign.com/images/why-jw-earth-texture.jpg',timeout=15) as response: assert response.read(2)==b'\xff\xd8'
+                  with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as summary: summary.write('Public page, UK statistic and local Earth texture verified.\n')
+                  break
+              except Exception as error:
+                  print('Public verification pending:',error)
+                  if attempt==29: raise
+                  time.sleep(8)
