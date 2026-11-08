@@ -1,0 +1,127 @@
+name: Redesign Why JW Earth visual
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/why-jw-earth-redesign.yml']
+permissions:
+  contents: write
+  pages: write
+concurrency:
+  group: why-jw-earth-redesign
+  cancel-in-progress: false
+jobs:
+  redesign:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Install page and image tools
+        run: python -m pip install beautifulsoup4 pillow
+      - name: Prepare photographic Earth and checked page edits
+        shell: python
+        run: |
+          from pathlib import Path
+          from urllib.request import urlopen
+          from io import BytesIO
+          from PIL import Image
+          from bs4 import BeautifulSoup
+          import re
+          path = Path('why-jw-growth-design.html')
+          source = path.read_text()
+          soup = BeautifulSoup(source, 'html.parser')
+          journey = soup.select('section[aria-labelledby=journeyTitle]')
+          assert len(journey) == 1, 'Expected one customer journey section'
+          journey[0].decompose()
+          globe = soup.select('.globe')
+          assert len(globe) == 1
+          globe = globe[0]
+          globe.clear()
+          globe['class'] = ['globe', 'earth-photo']
+          image = soup.new_tag('img', src='/images/why-jw-earth.jpg', alt='NASA Blue Marble Earth', width='720', height='720', loading='lazy')
+          globe.append(image)
+          for name in ['earth-shade', 'earth-heat earth-heat-a', 'earth-heat earth-heat-b', 'earth-heat earth-heat-c']:
+              node = soup.new_tag('span', attrs={'class':name.split(), 'aria-hidden':'true'})
+              globe.append(node)
+          for node in soup.select('.globe-note, .sources'):
+              node.decompose()
+          insight = soup.find(id='insightTitle').find_parent('section')
+          intro = insight.select_one('.section-intro')
+          intro.string = 'Help customers find your services, compare their options, check reviews and choose their next step.'
+          soup.select_one('.snapshot-label').string = 'Global reach. Local opportunity.'
+          cards = soup.select('.insight-card')
+          assert len(cards) == 3
+          for card, label in zip(cards, ['ITU · 2025', 'Ofcom · 2025', 'BrightLocal · 2026']):
+              for paragraph in card.find_all('p'):
+                  paragraph.decompose()
+              card.select_one('.source-link').string = label + ' ↗'
+          soup.select_one('meta[name=description]')['content'] = 'Practical website design for local and independent businesses, with clear communication, published research and straightforward routes to enquire.'
+          scripts = [node for node in soup.find_all('script') if not node.get('src') and 'const motion=matchMedia' in (node.string or '')]
+          assert len(scripts) == 1, 'Expected one page animation and menu controller'
+          scripts[0].string = '''(()=>{'use strict';const motion=matchMedia('(prefers-reduced-motion: reduce)'),button=document.getElementById('motionToggle');let paused=false;function sync(){document.body.classList.toggle('motion-paused',paused||motion.matches);button.disabled=motion.matches;button.textContent=motion.matches?'Motion reduced':paused?'Resume motion':'Pause motion';button.setAttribute('aria-pressed',String(paused||motion.matches))}button.addEventListener('click',()=>{paused=!paused;sync()});motion.addEventListener('change',sync);sync();const menu=document.getElementById('whyMenu'),nav=document.getElementById('mainNav');function closeMenu(){nav.classList.remove('open');menu.setAttribute('aria-expanded','false')}menu.addEventListener('click',()=>{const open=nav.classList.toggle('open');menu.setAttribute('aria-expanded',String(open))});nav.querySelectorAll('a').forEach(a=>a.addEventListener('click',closeMenu));document.addEventListener('keydown',event=>{if(event.key==='Escape')closeMenu()})})();'''
+          style = soup.new_tag('style', id='why-earth-photo-style')
+          style.string = '''.insight-panel{background:linear-gradient(135deg,#f7fafc,#e6eff6);padding:34px}.insight-grid{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:40px}.earth-photo{position:relative;width:100%;max-width:440px;aspect-ratio:1;border-radius:50%;overflow:hidden;background:#071b2e;isolation:isolate;box-shadow:0 0 0 1px #84b7d54d,0 0 35px #3690c52b,0 25px 55px #173b5626}.earth-photo img{display:block;width:100%;height:100%;object-fit:cover;border-radius:50%;filter:saturate(.8) contrast(1.08)}.earth-shade{position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 32% 26%,transparent 40%,#00112630 64%,#001126cc 100%);box-shadow:inset -14px -6px 25px #00112699,inset 4px 3px 12px #9bd5fb40;pointer-events:none}.earth-heat{position:absolute;border-radius:50%;mix-blend-mode:screen;pointer-events:none;background:radial-gradient(ellipse,#fff7becc 0%,#ffbb487d 20%,#f77a3940 42%,#19b8ca22 60%,transparent 74%);animation:earthHeatGlow 7s ease-in-out infinite}.earth-heat-a{width:36%;height:26%;left:17%;top:27%}.earth-heat-b{width:25%;height:34%;left:41%;top:53%;animation-delay:-2s}.earth-heat-c{width:25%;height:22%;left:61%;top:23%;animation-delay:-4s}.insight-card{padding:19px 22px;border-left-width:3px;box-shadow:0 6px 16px #173b5605}.insight-card h3{margin-bottom:0}.insight-card .source-link{font-size:10px;color:#526171;margin-top:9px}.stat-number{font-size:clamp(30px,3.7vw,43px)}@keyframes earthHeatGlow{0%,100%{opacity:.5;transform:scale(.95)}50%{opacity:.85;transform:scale(1.04)}}@media(max-width:750px){.insight-grid{grid-template-columns:1fr;gap:30px}.earth-photo{max-width:320px}.insight-panel{padding:22px}}@media(prefers-reduced-motion:reduce){.earth-heat{animation:none!important;opacity:.6}}'''
+          soup.head.append(style)
+          result = str(soup)
+          assert not soup.select('section[aria-labelledby=journeyTitle], .globe svg, .globe-note, .sources')
+          assert len(soup.select('.insight-card')) == 3
+          assert [node.get_text(strip=True) for node in soup.select('.stat-number')] == ['6bn', '4h 30m', '97%']
+          assert 'Surveyed US consumers' in soup.get_text()
+          assert 'From first visit to next step' not in soup.get_text()
+          assert len(soup.select('.source-link')) == 3
+          assert 'illustration' not in insight.get_text().lower()
+          asset_url = 'https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57730/globe_west_2048.jpg'
+          with urlopen(asset_url, timeout=45) as response:
+              raw = response.read(10000000)
+          earth = Image.open(BytesIO(raw))
+          assert earth.width >= 720 and earth.height >= 720
+          earth = earth.convert('RGB')
+          earth.thumbnail((720,720))
+          destination = Path('images/why-jw-earth.jpg')
+          destination.parent.mkdir(parents=True,exist_ok=True)
+          earth.save(destination, quality=90, optimize=True)
+          path.write_text(result)
+          Path('/tmp/why-jw-controller.js').write_text(scripts[0].string)
+      - name: Check script syntax and commit page and image only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          node --check /tmp/why-jw-controller.js
+          git diff --check
+          test -z "$(git diff --name-only -- .github/workflows)"
+          git add -- why-jw-growth-design.html images/why-jw-earth.jpg
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Replace wireframe globe with Earth heatmap visual and remove journey section'
+          git push origin HEAD:main
+          expected=$(git rev-parse HEAD)
+          actual=$(gh api repos/${{ github.repository }}/git/ref/heads/main --jq '.object.sha')
+          test "$expected" = "$actual"
+          echo "DEPLOY_COMMIT=$expected" >> "$GITHUB_ENV"
+          echo "Why JW page and Earth image committed: $expected" >> "$GITHUB_STEP_SUMMARY"
+      - name: Request Pages rebuild
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method POST repos/${{ github.repository }}/pages/builds
+      - name: Verify public page and Earth image
+        shell: python
+        run: |
+          import os,time
+          from urllib.request import urlopen
+          for attempt in range(25):
+              try:
+                  with urlopen('https://jwgrowthanddesign.com/why-jw-growth-design.html?revision='+os.environ['DEPLOY_COMMIT'],timeout=20) as response:
+                      text=response.read().decode('utf-8')
+                  assert 'why-earth-photo-style' in text and 'id="journeyTitle"' not in text
+                  with urlopen('https://jwgrowthanddesign.com/images/why-jw-earth.jpg',timeout=20) as response:
+                      assert response.read(2)==b'\xff\xd8'
+                  with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as summary:
+                      summary.write('Public Why JW page and photographic Earth asset verified.\n')
+                  break
+              except Exception as error:
+                  print('Public verification pending:',error)
+                  if attempt==24: raise
+                  time.sleep(10)
