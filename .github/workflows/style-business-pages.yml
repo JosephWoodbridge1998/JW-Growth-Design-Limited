@@ -1,0 +1,113 @@
+name: Match five business pages to JW theme
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/style-business-pages.yml', 'businesses/jw-business-theme.css', 'businesses/jw-business-theme.js']
+permissions:
+  contents: write
+  pages: write
+concurrency:
+  group: jw-business-theme
+  cancel-in-progress: false
+jobs:
+  style:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Theme the five selected pages without changing main content
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          PAGES = ['independent-retailers','coffee-shops','hair-nail-salons','barbers','tattoo-studios']
+          HEADER = '<header class="site-header"><div class="wrap header-inner"><a class="brand" href="/"><img src="/favicon.png" alt="" width="44" height="44"><span>JW Growth <em>&amp;</em> Design</span></a><button class="hub-menu-toggle" id="jw-business-menu" type="button" aria-expanded="false" aria-controls="jw-business-nav" hidden>Menu</button><nav class="hub-nav" id="jw-business-nav" aria-label="Main navigation"><a href="/about.html">About Us</a><a href="/businesses/">Who We Help</a><a href="/#services">Services</a><a href="/clients.html">Client Work</a><a href="/why-jw-growth-design.html">Why JW</a><a href="/contact-us.html">Contact Us</a><a href="/blog.html">Blog</a></nav><a class="btn hub-header-cta" href="/contact-us.html?intent=health-check">Free Website Health Check</a></div></header>'
+          FOOTER = '<footer class="site-footer"><div class="wrap"><div class="hub-footer-grid"><div><a class="brand" href="/"><img src="/favicon.png" alt="" width="44" height="44"><span>JW Growth <em>&amp;</em> Design</span></a><p>One point of contact. Considered websites for local and independent businesses.</p></div><div><h2>Company</h2><ul><li><a href="/about.html">About Us</a></li><li><a href="/businesses/">Who We Help</a></li><li><a href="/clients.html">Client Work</a></li><li><a href="/why-jw-growth-design.html">Why JW</a></li><li><a href="/blog.html">Blog</a></li></ul></div><div><h2>Get in touch</h2><ul><li><a href="/contact-us.html">Contact Us</a></li><li><a href="/services/website-design.html">Website Design Packages</a></li><li><a href="/privacy.html">Privacy &amp; cookies</a></li></ul></div></div><div class="hub-footer-bottom"><span>© 2026 JW Growth &amp; Design</span><span>Local businesses. Considered websites.</span></div></div></footer>'
+          THEME = '<link rel="stylesheet" href="/businesses/jw-business-theme.css?v=20261111-1">'
+          SCRIPT = '<script src="/businesses/jw-business-theme.js?v=20261111-1" defer></script>'
+          FONT = '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Sora:wght@600;700;800&amp;display=swap">'
+          updates = []
+          for slug in PAGES:
+              path = Path('businesses') / slug / 'index.html'
+              source = path.read_bytes().decode('utf-8')
+              original_main = re.search(r'<main\b[\s\S]*?</main>', source)
+              assert original_main, 'Missing main: '+slug
+              result = source
+              if 'jw-business-page' not in result:
+                  if '<body class="hub-compact">' in result:
+                      result = result.replace('<body class="hub-compact">','<body class="hub-compact jw-business-page">',1)
+                  else:
+                      assert '<body>' in result, 'Unexpected body: '+slug
+                      result = result.replace('<body>','<body class="jw-business-page">',1)
+              result, count = re.subn(r'<header class="site-header">[\s\S]*?</header>', lambda m: HEADER, result)
+              assert count == 1, 'Unexpected header: '+slug
+              result, count = re.subn(r'<footer class="site-footer">[\s\S]*?</footer>', lambda m: FOOTER, result)
+              assert count == 1, 'Unexpected footer: '+slug
+              if 'family=Manrope' not in result:
+                  result = result.replace('</head>',FONT+'</head>',1)
+              if THEME not in result:
+                  result = result.replace('</head>',THEME+'</head>',1)
+              if SCRIPT not in result:
+                  result = result.replace('</body>',SCRIPT+'</body>',1)
+              assert re.search(r'<main\b[\s\S]*?</main>',result).group() == original_main.group(), 'Main content changed: '+slug
+              assert result.count(THEME) == 1 and result.count(SCRIPT) == 1
+              assert result.count('id="jw-business-nav"') == 1
+              assert result.count('id="jw-business-menu"') == 1
+              updates.append((path,result))
+          for path, result in updates:
+              path.write_bytes(result.encode('utf-8'))
+          print('Five pages themed; main content, preview attributes, enquiry links and metadata preserved.')
+      - name: Commit only the five updated pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git add -- businesses/independent-retailers/index.html businesses/coffee-shops/index.html businesses/hair-nail-salons/index.html businesses/barbers/index.html businesses/tattoo-studios/index.html
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'Apply JW charcoal and cyan theme to five business hubs'
+            git push origin HEAD:main
+          fi
+          expected=$(git rev-parse HEAD)
+          test "$expected" = "$(gh api repos/${{ github.repository }}/git/ref/heads/main --jq '.object.sha')"
+          echo "DEPLOY_COMMIT=$expected" >> "$GITHUB_ENV"
+          echo "Theme commit: $expected" >> "$GITHUB_STEP_SUMMARY"
+      - name: Request Pages rebuild and verify commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api --method POST repos/${{ github.repository }}/pages/builds > /tmp/business-build.json
+          build_url=$(jq -r '.url' /tmp/business-build.json)
+          test -n "$build_url"
+          test "$build_url" != null
+          for attempt in $(seq 1 40); do
+            gh api "$build_url" > /tmp/business-build-status.json
+            status=$(jq -r '.status' /tmp/business-build-status.json)
+            if [ "$status" = built ]; then
+              test "$(jq -r '.commit' /tmp/business-build-status.json)" = "$DEPLOY_COMMIT"
+              exit 0
+            fi
+            if [ "$status" = errored ]; then cat /tmp/business-build-status.json; exit 1; fi
+            sleep 10
+          done
+          echo 'Pages rebuild not confirmed' >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+      - name: Verify public pages and shared assets
+        run: |
+          set -euo pipefail
+          for slug in independent-retailers coffee-shops hair-nail-salons barbers tattoo-studios; do
+            curl --fail --silent --show-error --location --retry 4 --max-time 25 "https://jwgrowthanddesign.com/businesses/$slug/?deployment=$DEPLOY_COMMIT" -o /tmp/business-page.html
+            grep -q 'jw-business-page' /tmp/business-page.html
+            grep -q 'id="jw-business-nav"' /tmp/business-page.html
+            grep -q '/businesses/jw-business-theme.css?v=20261111-1' /tmp/business-page.html
+          done
+          for ext in css js; do
+            curl --fail --silent --show-error --location --retry 4 --max-time 25 "https://jwgrowthanddesign.com/businesses/jw-business-theme.$ext?deployment=$DEPLOY_COMMIT" -o "/tmp/jw-business-theme.$ext"
+            cmp -s "businesses/jw-business-theme.$ext" "/tmp/jw-business-theme.$ext"
+          done
+          echo 'Five public pages and shared theme assets verified. Browser rendering not checked.' >> "$GITHUB_STEP_SUMMARY"
