@@ -1,0 +1,147 @@
+name: Ember onboarding and imagery refresh
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/ember-onboarding-refresh.yml']
+permissions:
+  contents: write
+  pages: write
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pillow beautifulsoup4
+      - name: Refresh Ember and every shared preview reference
+        shell: python
+        run: |
+          from pathlib import Path
+          from io import BytesIO
+          from collections import deque
+          from urllib.request import urlopen, Request
+          import re, json
+          from PIL import Image
+          from bs4 import BeautifulSoup
+          root=Path('.')
+          version='20261111-ember-onboarding-2'
+          folder=Path('images/ember');folder.mkdir(exist_ok=True)
+          foods=[('croissant','Croissant',15385723,'choice-of-croissants-and-muffins'),('sandwich','Sandwich',19388211,'croissant-sandwich-on-tray'),('hot-coffee','Hot coffee',38591654,'cozy-coffee-shop-with-iced-and-hot-coffee'),('iced-coffee','Iced coffee',35393901,'iced-coffee-in-glass-with-straw-on-table'),('matcha','Matcha green tea',14430999,'a-matcha-latte-on-a-ceramic-cup'),('muffin','Muffin',14395544,'plate-with-muffin'),('cookie','Cookie',8081574,'chocolate-chip-cookies-on-a-plate')]
+          credits=[]
+          for slug,label,pid,source in foods:
+              url=f'https://images.pexels.com/photos/{pid}/pexels-photo-{pid}.jpeg?auto=compress&cs=tinysrgb&w=1200'
+              with urlopen(Request(url,headers={'User-Agent':'Mozilla/5.0'}),timeout=60) as response: image=Image.open(BytesIO(response.read())).convert('RGB')
+              assert min(image.size)>200, f'Invalid photo: {slug}'
+              image.thumbnail((1200,1200));image.save(folder/f'{slug}.webp','WEBP',quality=85)
+              credits.append(f'<li>{label}: <a href="https://www.pexels.com/photo/{source}-{pid}/">Pexels photograph</a></li>')
+          logo=Image.open('images/case-studies/ember-grain-logo.webp').convert('RGBA')
+          pixels=logo.load();w,h=logo.size;seen=set();queue=deque()
+          for x in range(w): queue.extend([(x,0),(x,h-1)])
+          for y in range(h): queue.extend([(0,y),(w-1,y)])
+          while queue:
+              x,y=queue.popleft()
+              if (x,y) in seen or not (0<=x<w and 0<=y<h): continue
+              seen.add((x,y));r,g,b,a=pixels[x,y]
+              if min(r,g,b)<218 or max(r,g,b)-min(r,g,b)>32: continue
+              pixels[x,y]=(r,g,b,0);queue.extend([(x-1,y),(x+1,y),(x,y-1),(x,y+1)])
+          assert logo.getchannel('A').getextrema()[0]==0, 'Logo background was not removed'
+          box=logo.getchannel('A').getbbox();assert box
+          logo=logo.crop(box);logo.save(folder/'ember-logo-transparent.png')
+          page=Path('showcases/coffee-shop/index.html')
+          soup=BeautifulSoup(page.read_text(),'html.parser')
+          def content(selector,html):
+              node=soup.select_one(selector);assert node is not None, selector
+              node.clear();node.append(BeautifulSoup(html,'html.parser'))
+          soup.title.string='Ember & Grain | Coffee, Kitchen & Company'
+          soup.select_one('meta[name=description]')['content']='Ember & Grain — coffee, kitchen and company. New client website in development with JW Growth & Design; onboarding is underway.'
+          content('.demo','<span>Ember &amp; Grain · Client website in development</span><a href="/case-studies/ember-and-grain.html" target="_top">Project &amp; onboarding status ↗</a>')
+          soup.select_one('header .brand')['aria-label']='Ember and Grain home'
+          soup.select_one('header nav')['aria-label']='Café navigation'
+          soup.select_one('.hero .text-link').string='Our story ↓'
+          soup.select_one('.hero-foot span').string='Coffee · Kitchen · Company'
+          soup.select_one('.ticker')['aria-label']='Café highlights'
+          content('.intro > div:nth-of-type(2)','<p>A carefully made coffee. A bite to eat. A little time to yourself. Welcome to Ember &amp; Grain.</p><p>Explore coffee, matcha and something from the kitchen, all brought together in one welcoming place online.</p><a class="underlink" href="#menu">Find your next favourite ↗</a>')
+          soup.select_one('.menu-section .section-head > p:last-child').string='Coffee, matcha and something from the kitchen. The final menu and prices are being confirmed during onboarding.'
+          soup.select_one('.menu-filter legend').string='Choose a menu category'
+          groups={'coffee':['hot-coffee'],'other':['matcha'],'iced':['iced-coffee'],'kitchen':['croissant','sandwich','muffin','cookie']}
+          for group,slugs in groups.items():
+              cards=[]
+              for slug in slugs:
+                  label=next(row[1] for row in foods if row[0]==slug)
+                  cards.append(f'<article class="ember-food-card"><img src="/images/ember/{slug}.webp?v={version}" alt="{label}" width="800" height="600" loading="lazy"><div><h3>{label}</h3></div></article>')
+              content(f'.menu-list[data-group={group}]',''.join(cards))
+          content('.menu-note','Menu, prices and availability are pending client approval. For ingredients, allergens and dietary requirements, please refer to business-approved information when published.')
+          content('.story-copy','<p class="eyebrow">A little room for the everyday</p><h2>Come for a coffee.<br><em>Stay for the moment.</em></h2><p>Good coffee, something to eat and time for conversation. A simple invitation to slow down and enjoy the everyday.</p><p>Ember &amp; Grain’s new website is taking shape with JW Growth &amp; Design. More about the café will be shared as onboarding progresses.</p><a class="underlink" href="#visit">Stay in the loop ↗</a>')
+          story=soup.select_one('.story-photo img');story['src']=f'/images/ember/croissant.webp?v={version}';story['alt']='Croissants and muffins';story['width']='1200';story['height']='900'
+          soup.select_one('.photo-note').decompose()
+          soup.select_one('.ritual .ritual-grid > div > p:not(.eyebrow)').string='First the coffee, then the milk, then a moment to enjoy it. A small ritual brought to life on the page.'
+          soup.select_one('.ritual .fine').decompose()
+          content('.gallery > div','<p class="eyebrow">A little something on the side</p><h2>Coffee’s favourite<br><em>company.</em></h2><p>A croissant, a muffin or a cookie: something to enjoy alongside your next cup.</p><a class="underlink" href="#menu">Explore the menu ↑</a>')
+          gallery=soup.select_one('.gallery img');gallery['src']=f'/images/ember/cookie.webp?v={version}';gallery['alt']='Chocolate chip cookies on a plate';gallery['width']='1200';gallery['height']='900'
+          soup.select_one('.gallery figcaption').string='Something sweet for your coffee break.'
+          content('#visit > .section','<div class="section-head"><p class="eyebrow">The next chapter</p><h2>Your next <em>coffee moment.</em></h2><p>Our new website is in development. Location, opening hours and contact details will be published once confirmed.</p></div><div class="visit-details"><div><h3>Planning a visit</h3><p>Verified visiting information is coming soon.</p></div><div><h3>Menu and dietary information</h3><p>The team is confirming the menu, prices and allergen information before publication.</p></div></div>')
+          soup.select_one('.handoff').decompose()
+          content('footer .footer-main',f'<a href="#home" class="brand"><img src="/images/ember/ember-logo-transparent.png?v={version}" alt="Ember &amp; Grain willow tree and coffee cup logo" width="160" height="150"><span>COFFEE · KITCHEN · COMPANY</span></a><p>Ember &amp; Grain · New client website in development with JW Growth &amp; Design. Onboarding is underway.</p>')
+          content('footer .credits','<summary>Photography credits</summary><p>Selected food and drink photographs are licensed stock photography, not photographs of Ember’s products or premises.</p><ul>'+''.join(credits)+'</ul><p>Hero coffee photograph: <a href="https://unsplash.com/photos/Ms-yiAyZaP8">Ali Olfian / Unsplash</a>. Food photography: <a href="https://www.pexels.com/license/">Pexels licence</a>.</p>')
+          content('.footer-bottom','<span>Website by JW Growth &amp; Design</span><a href="/case-studies/ember-and-grain.html" target="_top">Project status ↗</a>')
+          for img in soup.select('img[src*=ember-grain-logo], footer .brand img'):
+              img['src']=f'/images/ember/ember-logo-transparent.png?v={version}';img['style']='display:block;object-fit:contain;background:transparent;border-radius:0;max-width:160px;height:auto'
+          style=soup.new_tag('style');style.string='.menus .menu-list .ember-food-card{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;overflow:hidden;padding:0 0 18px}.ember-food-card img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px}.ember-food-card h3{margin:0}.header .brand img,footer .brand img{background:transparent!important;border-radius:0!important}.menus .menu-list{gap:22px}.demo{font-size:11px}';soup.head.append(style)
+          page.write_text(str(soup),encoding='utf-8')
+          replacements={
+          'Client onboarded':'Client onboarding',
+          'Ember &amp; Grain fictional website concept':'Ember &amp; Grain client website in development',
+          'Explore the Website Concept ↗':'Explore the Client Website Preview ↗',
+          'A fictional café concept with a sample menu and visiting information. No real ordering.':'Ember &amp; Grain — official client website in development. Onboarding is underway; final business details are pending approval.',
+          'The linked preview retains illustrative menus, locations and other demonstration content pending approval. Onboarding is not presented as a completed production launch.':'Ember &amp; Grain is an official client undergoing onboarding. The website is in development; final menu, business details and launch arrangements remain subject to approval.',
+          'Client onboarded. Technical foundations, commercial responsibilities and hosting scope are documented; business details and production-launch arrangements remain subject to approval.':'Official client undergoing onboarding. Website development is in progress; business details and production-launch arrangements remain subject to approval.',
+          'The current linked preview originated as a demonstration and still contains fictional-business disclosures, sample GBP prices, illustrative Reading locations, sample hours and a reserved example email address. Stock photographs are credited in that preview and are not asserted to show the client’s premises.':'Ember &amp; Grain is an official client undergoing onboarding. The refreshed website includes food and drink photography and the approved brand identity. Verified menu, prices, locations, hours and contact details are pending client approval. Licensed stock photographs are credited and are not presented as photographs of the client’s products or premises.',
+          'Client case study · New client onboarded':'Client project · Onboarding in progress',
+          'Ember &amp; Grain is now an onboarded JW Growth &amp; Design client.':'Ember &amp; Grain is an official JW Growth &amp; Design client currently undergoing onboarding.',
+          'Replace sample locations, opening hours, prices and contact details with business-approved information.':'Publish locations, opening hours, prices and contact details only after client approval.'}
+          for path in root.rglob('*'):
+              if path.suffix not in ('.html','.js','.css') or any(part in ('.git','.github','theme-backups','node_modules') for part in path.parts): continue
+              text=path.read_text();original=text
+              if path==page: continue
+              text=re.sub(r'/images/case-studies/ember-grain-logo\.webp(?:\?[^\s\"<>\x27]*)?',f'/images/ember/ember-logo-transparent.png?v={version}',text)
+              text=re.sub(r'(/showcases/coffee-shop/)(?:\?v=[A-Za-z0-9-]+)?',r'\1?v='+version,text)
+              if str(path) in ('clients.html','case-studies/ember-and-grain.html','businesses/coffee-shops/index.html'):
+                  for old,new in replacements.items(): text=text.replace(old,new)
+                  text=text.replace('background:#fff;border-radius:12px;padding:8px;margin:18px 0','background:transparent;border-radius:0;padding:0;margin:18px 0')
+              if path.name=='clients.html': text=text.replace('</head>','<style>#ember-and-grain-case-study .case-logo{background:transparent;padding:0;border-radius:0}</style></head>')
+              for name in ('jw-home-film.js','jw-portfolio-cinematic-v4.html'):
+                  text=re.sub(re.escape(name)+r'(?:\?v=[A-Za-z0-9-]+)?',name+'?v='+version,text)
+              if text!=original: path.write_text(text)
+          film=Path('jw-home-film.js');text=film.read_text()
+          text=text.replace('Fictional website concepts. Simulated Google search, booking and Facebook page. Sample reviews, vegan menu and walking route—not live business information or platform endorsements.','Barber and salon concepts with simulated search, booking, reviews and social pages. Ember & Grain is a client website in development; onboarding is in progress. No live bookings or platform endorsements.')
+          text=re.sub(r'if\(i===2\)\{const extra=.*?\}\nawait new Promise','await new Promise',text,flags=re.S)
+          text=text.replace("s.frame.title=s.name+' fictional website demonstration'","s.frame.title=s.name+(i===2?' client website in development':' fictional website demonstration')")
+          start=text.index('async function cafe(s,v){');end=text.index('async function run(v){',start)
+          text=text[:start]+"async function cafe(s,v){feature(2,'Coffee, kitchen and company.','Ember & Grain — client onboarding and website development in progress.');if(!await wait(1200,v)||!await nav(s,'menu',v)||!await wait(1600,v))return false;for(const id of ['other','iced','kitchen']){if(!await point(s.doc.querySelector('label[for=\"'+id+'\"]'),v,true,s)||!await wait(1600,v))return false}if(!await nav(s,'story',v)||!await wait(1600,v)||!await nav(s,'visit',v)||!await wait(1600,v))return false;return true}\n"+text[end:]
+          film.write_text(text)
+          final=BeautifulSoup(page.read_text(),'html.parser')
+          assert all(final.select_one(f'img[src*="/{slug}.webp"]') for slug,*_ in foods)
+          assert len(final.select('.menu-list'))==4
+          assert all(final.select_one('#'+x) for x in ('menu','story','ritual','visit'))
+          assert not re.search(r'fictional|illustrative|imagined|\.example|£[0-9]|Reading',final.get_text(),re.I), 'Old invented business details remain'
+          assert '20261111-ember-onboarding-2' in Path('clients.html').read_text()
+      - name: Validate homepage script
+        run: node --check jw-home-film.js
+      - name: Commit website and image changes
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- '*.html' '*.js' '*.css' images/ember
+          git commit -m 'Refresh Ember client site, imagery, transparent logo and shared previews'
+          git push origin HEAD:main
+          git show --stat --oneline HEAD >> "$GITHUB_STEP_SUMMARY"
+      - name: Request Pages rebuild
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method POST repos/${{ github.repository }}/pages/builds
