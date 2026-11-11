@@ -1,0 +1,107 @@
+name: Install approved Ember and Grain logo
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/install-ember-logo.yml']
+permissions:
+  contents: write
+  pages: write
+concurrency:
+  group: install-ember-logo
+  cancel-in-progress: false
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Install logo and update only Ember branding
+        shell: python
+        run: |
+          from pathlib import Path
+          import base64, hashlib
+          LOGO_DATA = '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'
+          EXPECTED_SHA256 = '1218c90122918e8584630773e16ad4f8a7fd7d2b780c98933654baf6eb856f22'
+          ASSET = '/images/case-studies/ember-grain-logo.webp?v=20261111-willow-1'
+          def replace_once(text, old, new):
+              if new in text:
+                  assert text.count(new) == 1, 'Duplicate logo markup'
+                  return text
+              assert text.count(old) == 1, 'Expected one logo target; no changes written'
+              return text.replace(old, new, 1)
+          home_path = Path('index.html')
+          coffee_path = Path('showcases/coffee-shop/index.html')
+          case_path = Path('case-studies/ember-and-grain.html')
+          home = home_path.read_bytes().decode('utf-8')
+          assert home.count('id="ember-client-homepage"') == 1
+          before_ember = home.split('id="ember-client-homepage"', 1)[0]
+          home = replace_once(home, '<div class="eg-wordmark">ember &amp; grain</div>', '<div class="eg-wordmark" style="background:#fff"><img src="'+ASSET+'" alt="Ember &amp; Grain willow tree and coffee cup logo" width="192" height="186" loading="lazy" style="display:block;width:100%;height:112px;object-fit:contain;padding:6px"></div>')
+          home = replace_once(home, '<span class="eg-mark" aria-hidden="true">E&amp;G</span>', '<img src="'+ASSET+'" alt="Ember &amp; Grain logo" width="64" height="64" loading="lazy">')
+          assert home.split('id="ember-client-homepage"', 1)[0] == before_ember, 'Unrelated homepage content changed'
+          coffee = coffee_path.read_bytes().decode('utf-8')
+          for caption, width, height in [('COFFEE · KITCHEN · COMPANY',128,96), ('A FICTIONAL CAFÉ BY JW',160,150)]:
+              old = 'ember <i>&amp;</i> grain<span>'+caption+'</span>'
+              new = '<img src="'+ASSET+'" alt="Ember &amp; Grain willow tree and coffee cup logo" width="'+str(width)+'" height="'+str(height)+'" style="display:block;width:'+str(width)+'px;height:'+str(height)+'px;object-fit:contain;background:#fff;border-radius:6px"><span>'+caption+'</span>'
+              coffee = replace_once(coffee, old, new)
+          case = case_path.read_bytes().decode('utf-8')
+          case = replace_once(case, '<h1>Ember &amp; Grain</h1>', '<img id="eg-case-logo" src="'+ASSET+'" alt="Ember &amp; Grain willow tree and coffee cup logo" width="192" height="186" style="display:block;width:160px;max-width:100%;height:auto;background:#fff;border-radius:12px;padding:8px;margin:18px 0"><h1>Ember &amp; Grain</h1>')
+          data = base64.b64decode(LOGO_DATA, validate=True)
+          assert data[:4] == b'RIFF' and data[8:12] == b'WEBP'
+          assert hashlib.sha256(data).hexdigest() == EXPECTED_SHA256
+          assert home.count(ASSET) == 2 and coffee.count(ASSET) == 2 and case.count(ASSET) == 1
+          asset_path = Path('images/case-studies/ember-grain-logo.webp')
+          asset_path.parent.mkdir(parents=True, exist_ok=True)
+          asset_path.write_bytes(data)
+          for path, content in [(home_path, home), (coffee_path, coffee), (case_path, case)]:
+              path.write_bytes(content.encode('utf-8'))
+      - name: Commit scoped branding changes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git add -- index.html showcases/coffee-shop/index.html case-studies/ember-and-grain.html images/case-studies/ember-grain-logo.webp
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'Install approved Ember and Grain willow coffee logo across case study and previews'
+            git push origin HEAD:main
+          fi
+          expected=$(git rev-parse HEAD)
+          actual=$(gh api repos/${{ github.repository }}/git/ref/heads/main --jq '.object.sha')
+          test "$expected" = "$actual"
+          echo "DEPLOY_COMMIT=$expected" >> "$GITHUB_ENV"
+          echo "Branding commit: $expected" >> "$GITHUB_STEP_SUMMARY"
+      - name: Rebuild Pages and verify deployment commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api --method POST repos/${{ github.repository }}/pages/builds > /tmp/ember-pages-request.json
+          build_url=$(jq -r '.url' /tmp/ember-pages-request.json)
+          test -n "$build_url"
+          test "$build_url" != null
+          for attempt in $(seq 1 40); do
+            gh api "$build_url" > /tmp/ember-pages-status.json
+            status=$(jq -r '.status' /tmp/ember-pages-status.json)
+            if [ "$status" = built ]; then
+              test "$(jq -r '.commit' /tmp/ember-pages-status.json)" = "$DEPLOY_COMMIT"
+              exit 0
+            fi
+            if [ "$status" = errored ]; then cat /tmp/ember-pages-status.json; exit 1; fi
+            sleep 10
+          done
+          echo 'Pages rebuild not confirmed' >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+      - name: Verify public logo and page markup
+        run: |
+          set -euo pipefail
+          for path in '' 'showcases/coffee-shop/' 'case-studies/ember-and-grain.html'; do
+            curl --fail --silent --show-error --location --retry 4 --max-time 25 "https://jwgrowthanddesign.com/$path?deployment=$DEPLOY_COMMIT" -o /tmp/ember-public.html
+            grep -q '/images/case-studies/ember-grain-logo.webp?v=20261111-willow-1' /tmp/ember-public.html
+          done
+          curl --fail --silent --show-error --location --retry 4 --max-time 25 "https://jwgrowthanddesign.com/images/case-studies/ember-grain-logo.webp?deployment=$DEPLOY_COMMIT" -o /tmp/ember-public.webp
+          echo '1218c90122918e8584630773e16ad4f8a7fd7d2b780c98933654baf6eb856f22  /tmp/ember-public.webp' | sha256sum --check
+          echo 'Public logo bytes and homepage, cafe preview and full case-study markup verified. Browser rendering not checked.' >> "$GITHUB_STEP_SUMMARY"
