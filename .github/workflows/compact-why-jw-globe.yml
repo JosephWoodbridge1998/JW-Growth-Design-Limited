@@ -1,0 +1,83 @@
+name: Compact and smooth Why JW globe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/compact-why-jw-globe.yml']
+permissions:
+  contents: write
+  pages: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Apply targeted globe and card adjustments
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          page = Path('why-jw-growth-design.html')
+          source = page.read_bytes().decode('utf-8')
+          css = '''<style id="jw-why-compact-globe">
+          #insightPanel{max-width:960px;margin-inline:auto;padding:24px}
+          #insightPanel .insight-top{margin-bottom:16px}
+          #insightPanel .insight-grid{grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:26px}
+          #insightPanel .earth-photo{width:100%;max-width:280px;margin-inline:auto}
+          #insightPanel .insight-cards{gap:10px}
+          #insightPanel .insight-card{padding:14px 18px}
+          #insightPanel .stat-number{font-size:clamp(26px,2.6vw,32px);margin-bottom:5px}
+          #insightPanel .insight-card h3{font-size:12px;line-height:1.5}
+          #insightPanel .source-link{margin-top:7px}
+          @media(max-width:750px){#insightPanel{max-width:520px;padding:20px}#insightPanel .insight-grid{grid-template-columns:1fr;gap:20px}#insightPanel .earth-photo{max-width:220px}}
+          @media(max-width:480px){#insightPanel{padding:18px}#insightPanel .earth-photo{max-width:190px}#insightPanel .insight-card{padding:12px 14px}#insightPanel .stat-number{font-size:26px}}
+          </style>'''.strip()
+          if 'id="jw-why-compact-globe"' in source:
+              updated = re.sub(r'<style id="jw-why-compact-globe">[\s\S]*?</style>',lambda m:css,source,count=1)
+          else:
+              assert source.count('</head>') == 1
+              updated = source.replace('</head>',css+'</head>',1)
+          updated, count = re.subn(r'(/jw-why-earth\.js\?v=)[^"]+',r'\g<1>20261111-compact-smooth',updated)
+          assert count == 1, 'Expected one globe loader'
+          def body(text):
+              return re.sub(r'/jw-why-earth\.js\?v=[^"]+','/jw-why-earth.js',text.split('</head>',1)[1])
+          assert body(source) == body(updated), 'Unexpected content change'
+          script = Path('jw-why-earth.js')
+          original = script.read_bytes().decode('utf-8')
+          changes = [
+              ('size=320,canvas=', 'size=256,canvas='),
+              ('delta*2*Math.PI/60000', 'delta*2*Math.PI/30000'),
+              ('now-lastDraw>=50', 'now-lastDraw>=1000/60-1'),
+              ('(12+8*point.w)*Math.sqrt(p.z)', '(9+6*point.w)*Math.sqrt(p.z)'),
+              ('.65+.55*point.w', '.5+.4*point.w'),
+              ('const at=(v*1024+Math.min(1023,Math.floor(u*1024)))*4;pixels[offset]=texture[at]*shade;pixels[offset+1]=texture[at+1]*shade;pixels[offset+2]=texture[at+2]*shade', 'const column=u*1024,left=Math.floor(column),blend=column-left,at=(v*1024+left)*4,next=(v*1024+(left+1)%1024)*4;pixels[offset]=(texture[at]+(texture[next]-texture[at])*blend)*shade;pixels[offset+1]=(texture[at+1]+(texture[next+1]-texture[at+1])*blend)*shade;pixels[offset+2]=(texture[at+2]+(texture[next+2]-texture[at+2])*blend)*shade')
+          ]
+          result = original
+          for old,new in changes:
+              if old in result:
+                  assert result.count(old) == 1, 'Ambiguous animation replacement'
+                  result = result.replace(old,new,1)
+              else:
+                  assert new in result, 'Animation source changed unexpectedly'
+          for guard in ['!paused&&!motion.matches&&!document.hidden&&visible', 'MutationObserver', 'IntersectionObserver', 'requestAnimationFrame(tick)', "globe.dataset.spinningEarth='fallback'"]:
+              assert guard in result, 'Animation safeguard missing'
+          page.write_bytes(updated.encode('utf-8'))
+          script.write_bytes(result.encode('utf-8'))
+      - name: Check animation syntax
+        run: node --check jw-why-earth.js
+      - name: Commit only page and globe renderer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git add -- why-jw-growth-design.html jw-why-earth.js
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'Compact Why JW globe and stats with smoother faster rotation'
+            git push origin HEAD:main
+          fi
+          echo "Globe update commit: $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+          gh api --method POST repos/${{ github.repository }}/pages/builds
