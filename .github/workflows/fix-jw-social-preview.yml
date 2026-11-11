@@ -1,0 +1,160 @@
+name: Fix JW homepage social preview
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fix-jw-social-preview.yml']
+permissions:
+  contents: write
+  pages: write
+concurrency:
+  group: jw-social-preview
+  cancel-in-progress: false
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Install image library
+        run: python -m pip install --disable-pip-version-check Pillow
+      - name: Create JW image and set static sharing metadata
+        shell: python
+        run: |
+          from pathlib import Path
+          from io import BytesIO
+          from html.parser import HTMLParser
+          from PIL import Image, ImageDraw, ImageFont
+          import re
+          image_path = Path('images/jw-social-preview-20261111.png')
+          image_url = 'https://jwgrowthanddesign.com/images/jw-social-preview-20261111.png'
+          logo = Image.open('favicon.png').convert('RGBA')
+          assert min(logo.size) >= 32, 'JW logo asset is too small'
+          card = Image.new('RGB',(1200,630),'#10151b')
+          draw = ImageDraw.Draw(card)
+          draw.rounded_rectangle((24,24,1176,606),radius=28,outline='#334252',width=2)
+          draw.rounded_rectangle((70,78,76,552),radius=3,fill='#00d9ff')
+          logo.thumbnail((128,128),Image.Resampling.LANCZOS)
+          card.paste(logo,((1200-logo.width)//2,68),logo)
+          def font(size,bold=False):
+              filename = 'DejaVuSans-Bold.ttf' if bold else 'DejaVuSans.ttf'
+              path = Path('/usr/share/fonts/truetype/dejavu')/filename
+              if path.is_file():
+                  return ImageFont.truetype(str(path),size)
+              return ImageFont.load_default(size=size)
+          lines = [('JW Growth & Design',232,52,True,'#f1f5f9'),('Websites for local businesses',316,32,False,'#70e8ff'),('A bespoke website. One person to call.',382,24,False,'#b1bfce'),('jwgrowthanddesign.com',496,24,False,'#f1f5f9')]
+          for text,y,size,bold,color in lines:
+              face = font(size,bold)
+              while draw.textbbox((0,0),text,font=face)[2] > 610:
+                  size -= 1
+                  face = font(size,bold)
+              draw.text((600,y),text,font=face,fill=color,anchor='mt')
+          stream = BytesIO()
+          card.save(stream,format='PNG',optimize=True)
+          image_bytes = stream.getvalue()
+          assert 0 < len(image_bytes) < 8*1024*1024
+          with Image.open(BytesIO(image_bytes)) as check:
+              assert check.size == (1200,630) and check.format == 'PNG'
+          class MetaParser(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.tags = {}
+              def handle_starttag(self,tag,attrs):
+                  if tag.lower() == 'meta':
+                      attrs = dict(attrs)
+                      key = (attrs.get('property') or attrs.get('name') or '').lower()
+                      self.tags.setdefault(key,[]).append(attrs.get('content',''))
+          block = '\n'.join([
+              '<!-- JW social preview -->',
+              '<meta property="og:image" content="'+image_url+'">',
+              '<meta property="og:image:secure_url" content="'+image_url+'">',
+              '<meta property="og:image:type" content="image/png">',
+              '<meta property="og:image:width" content="1200">',
+              '<meta property="og:image:height" content="630">',
+              '<meta property="og:image:alt" content="JW Growth &amp; Design — websites for local and independent businesses">',
+              '<meta name="twitter:card" content="summary_large_image">',
+              '<meta name="twitter:title" content="Website Design for Local Businesses | JW Growth &amp; Design">',
+              '<meta name="twitter:description" content="Premium, mobile-first websites for local and independent businesses.">',
+              '<meta name="twitter:image" content="'+image_url+'">',
+              '<meta name="twitter:image:alt" content="JW Growth &amp; Design — websites for local and independent businesses">',
+              '<!-- /JW social preview -->'])
+          source = Path('index.html').read_bytes().decode('utf-8')
+          def patch(source):
+              head = re.search(r'<head\b[^>]*>([\s\S]*?)</head>',source,re.I)
+              assert head, 'Homepage head missing'
+              original = re.sub(r'\n?<!-- JW social preview -->[\s\S]*?<!-- /JW social preview -->','',head.group(1))
+              def keep_meta(match):
+                  parser = MetaParser()
+                  parser.feed(match.group())
+                  for key in parser.tags:
+                      if key.startswith('og:image') or key.startswith('twitter:image') or key in {'twitter:card','twitter:title','twitter:description'}:
+                          return ''
+                  return match.group()
+              cleaned = re.sub(r'<meta\b[^>]*>',keep_meta,original,flags=re.I)
+              charset = re.search(r'<meta\b[^>]*charset\s*=[^>]*>',cleaned,re.I)
+              assert charset, 'Homepage charset missing'
+              updated = cleaned[:charset.end()]+'\n'+block+cleaned[charset.end():]
+              result = source[:head.start(1)]+updated+source[head.end(1):]
+              assert result.split('</head>',1)[1] == source.split('</head>',1)[1], 'Visible homepage changed'
+              parser = MetaParser()
+              parser.feed(updated)
+              assert parser.tags['og:image'] == [image_url]
+              assert parser.tags['og:image:width'] == ['1200']
+              assert parser.tags['og:image:height'] == ['630']
+              assert parser.tags['twitter:image'] == [image_url]
+              assert parser.tags['twitter:card'] == ['summary_large_image']
+              assert parser.tags['og:url'] == ['https://jwgrowthanddesign.com/']
+              return result
+          result = patch(source)
+          assert patch(result) == result, 'Repeat run would duplicate metadata'
+          image_path.parent.mkdir(parents=True,exist_ok=True)
+          image_path.write_bytes(image_bytes)
+          Path('index.html').write_bytes(result.encode('utf-8'))
+          print('JW sharing image and metadata verified; visible homepage and client previews unchanged.')
+      - name: Commit sharing image and homepage metadata only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git add -- index.html images/jw-social-preview-20261111.png
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'Set explicit JW-branded homepage social sharing image'
+            git push origin HEAD:main
+          fi
+          expected=$(git rev-parse HEAD)
+          test "$expected" = "$(gh api repos/${{ github.repository }}/git/ref/heads/main --jq '.object.sha')"
+          echo "DEPLOY_COMMIT=$expected" >> "$GITHUB_ENV"
+          echo "Social preview commit: $expected" >> "$GITHUB_STEP_SUMMARY"
+      - name: Request Pages rebuild and verify commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api --method POST repos/${{ github.repository }}/pages/builds > /tmp/jw-social-build.json
+          build_url=$(jq -r '.url' /tmp/jw-social-build.json)
+          test -n "$build_url"
+          test "$build_url" != null
+          for attempt in $(seq 1 40); do
+            gh api "$build_url" > /tmp/jw-social-status.json
+            status=$(jq -r '.status' /tmp/jw-social-status.json)
+            if [ "$status" = built ]; then
+              test "$(jq -r '.commit' /tmp/jw-social-status.json)" = "$DEPLOY_COMMIT"
+              exit 0
+            fi
+            if [ "$status" = errored ]; then cat /tmp/jw-social-status.json; exit 1; fi
+            sleep 10
+          done
+          echo 'Pages rebuild not confirmed' >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+      - name: Verify public crawler metadata and PNG
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location --retry 4 --max-time 25 --user-agent 'facebookexternalhit/1.1' "https://jwgrowthanddesign.com/?deployment=$DEPLOY_COMMIT" -o /tmp/jw-social-home.html
+          grep -q '<meta property="og:image" content="https://jwgrowthanddesign.com/images/jw-social-preview-20261111.png">' /tmp/jw-social-home.html
+          curl --fail --silent --show-error --location --retry 4 --max-time 25 "https://jwgrowthanddesign.com/images/jw-social-preview-20261111.png?deployment=$DEPLOY_COMMIT" -o /tmp/jw-social-public.png
+          cmp -s images/jw-social-preview-20261111.png /tmp/jw-social-public.png
+          echo 'Public social metadata and image bytes verified. Instagram cache and existing message cards are controlled by Meta; Instagram rendering not checked.' >> "$GITHUB_STEP_SUMMARY"
